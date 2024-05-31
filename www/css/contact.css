@@ -14,30 +14,24 @@ body {
 }
 
 header {
-    background-color: #007bff;
-    color: #fff;
-    padding: 1.5rem;
-    text-align: center;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+	background-color: #333;
+	color: #fff;
+	padding: 1rem;
+	text-align: center;
 }
-
 nav {
-    display: flex;
-    justify-content: center;
-    background-color: #0056b3;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+	display: flex;
+	justify-content: center;
+	background-color: #444;
 }
-
 nav a {
-    color: #fff;
-    padding: 1rem 2rem;
-    text-decoration: none;
-    text-transform: uppercase;
-    transition: background-color 0.3s ease;
+	color: #fff;
+	padding: 1rem;
+	text-decoration: none;
+	text-transform: uppercase;
 }
-
 nav a:hover {
-    background-color: #004494;
+	background-color: #555;
 }
 
 main {
@@ -47,7 +41,7 @@ main {
 }
 
 /* Container for the form */
-.upload-container {
+.form-container {
     background: #ffffff;
     padding: 30px;
     border-radius: 10px;
@@ -57,7 +51,7 @@ main {
 }
 
 /* Form header */
-.upload-container h2 {
+.form-container h2 {
     margin-bottom: 20px;
     font-size: 24px;
     text-align: center;
@@ -78,21 +72,24 @@ form label {
 }
 
 /* Input field styling */
-form input[type="file"] {
+form input[type="text"],
+form input[type="email"],
+form textarea {
     padding: 10px;
-    border: 2px dashed #ddd;
+    border: 2px solid #ddd;
     border-radius: 5px;
-    cursor: pointer;
+    margin-bottom: 20px;
     transition: border-color 0.3s;
 }
 
-form input[type="file"]:hover {
+form input[type="text"]:focus,
+form input[type="email"]:focus,
+form textarea:focus {
     border-color: #ccc;
 }
 
 /* Submit button styling */
 form input[type="submit"] {
-    margin-top: 20px;
     padding: 10px;
     border: none;
     border-radius: 5px;
