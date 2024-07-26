@@ -19,7 +19,7 @@ all: $(NAME)
 
 $(NAME): $(OBJS)
 	@echo "$(YELLOW)Compiling $(NAME)...$(RESET)"
-	g++ $(OBJS) -o $(NAME)
+	c++ $(OBJS) -o $(NAME)
 	@echo "$(GREEN)$(NAME) compiled successfully!$(RESET)"
 
 $(OBJS_DIR)%.o: %.c
