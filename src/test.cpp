@@ -72,12 +72,18 @@ void handle_client(int client_fd) {
             mime_type = "text/html";
         } else if (file_path.ends_with(".css")) {
             mime_type = "text/css";
+        } else if (file_path.ends_with(".js")) {
+            mime_type = "application/javascript";
+        } else if (file_path.ends_with(".png")) {
+            mime_type = "image/png";
+        } else if (file_path.ends_with(".jpg") || file_path.ends_with(".jpeg")) {
+            mime_type = "image/jpeg";
         } else {
             mime_type = "text/plain"; // default MIME type
         }
 
         // Open and read the requested file
-        std::ifstream file("." + file_path);
+        std::ifstream file("." + file_path, std::ios::binary);
         if (!file.is_open()) {
             const char* not_found_response = "HTTP/1.1 404 Not Found\r\n"
                                              "Content-Type: text/plain\r\n"
@@ -103,7 +109,6 @@ void handle_client(int client_fd) {
     }
     close(client_fd);
 }
-
 
 int main() {
     int listen_sock, conn_sock, epoll_fd;
