@@ -1,30 +1,37 @@
 /* ************************************************************************** */
 /*                                                                            */
 /*                                                        ::::::::            */
-/*   Socket.hpp                                         :+:    :+:            */
+/*   Request.hpp                                        :+:    :+:            */
 /*                                                     +:+                    */
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
-/*   Created: 2024/07/26 15:32:25 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/07/26 15:50:56 by dvan-kle      ########   odam.nl         */
+/*   Created: 2024/08/01 15:40:39 by dvan-kle      #+#    #+#                 */
+/*   Updated: 2024/08/01 16:16:17 by dvan-kle      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
 #pragma once
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <unistd.h>
+#include <iostream>
+#include <cstring>
 
-class StartSocket
+class Request
 {
 	private:
-		int _sock;
-		int _connection;
-		struct sockaddr_in _address;
+		int _client_fd;
+		char _buffer[1024];
+		std::string _method;
+		std::string _url;
+		std::string _http_version;
+		
+	
 	public:
-		StartSocket(int domain, int type, int protocol, int port, u_long interface);
-		StartSocket(const StartSocket &src) = delete;
-		StartSocket &operator=(const StartSocket &src) = delete;
-		~StartSocket();
+		Request(int client_fd);
+		Request(const Request &src) = delete;
+		Request &operator=(const Request &src) = delete;
+		~Request();
 
-		virtual int establishConnection(int sock, struct sockaddr_in address) = 0;
+		void ParseRequest();
+		
+		
 };
