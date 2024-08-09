@@ -6,7 +6,7 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/01 15:42:12 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/08/01 17:38:18 by dvan-kle      ########   odam.nl         */
+/*   Updated: 2024/08/09 15:06:34 by dvan-kle      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -25,10 +25,9 @@ Request::Request(int client_fd) : _client_fd(client_fd)
 	{
 		std::cerr << "Error: client disconnected" << std::endl;
 		close(_client_fd);
-		exit(EXIT_FAILURE);
+		//exit(EXIT_FAILURE);
 	}
 	_buffer[bytes_read] = '\0';
-	_www_path = "../www";
 }
 
 Request::~Request()
@@ -50,12 +49,12 @@ void Request::ParseRequest()
 
 		std::cout << "Method: " << _method << std::endl;
 		std::cout << "URL: " << _url << std::endl;
-		std::cout << "HTTP Version: " << _http_version << std::endl;
+		std::cout << "HTTP Version: " << _http_version << std::endl << std::endl;
 	} 
 	else
 		std::cerr << "Invalid HTTP request" << std::endl;
 	
-	SendResponse();
+	SendResponse(request);
 }
 
 void Request::ParseLine(std::string line)
@@ -74,26 +73,43 @@ void Request::ParseLine(std::string line)
 	_http_version = line.substr(prev);
 }
 
-void Request::SendResponse()
+void Request::SendResponse(std::string request)
 {
-	_response += _http_version + " " + HTTP_200 + CONTENT_TYPE + CONTENT_LENGTH + "\r\n";
-	std::cout << _response << std::endl;
-	const char* httpResponse = _response.c_str();
-    // "HTTP/1.1 200 OK\r\n"
-    // "Content-Type: text/html; charset=UTF-8\r\n"
-    // "Content-Length: sdasdsada\r\n"
-	// "Server: webserv named: server\r\n"
-    // "\r\n"
-    // "<!DOCTYPE html>\n"
-    // "<html>\n"
-    // "<head>\n"
-    // "    <title>Simple Response</title>\n"
-    // "</head>\n"
-    // "<body>\n"
-    // "    <h1>Hello, World!</h1>\n"
-    // "    <p>This is a simple HTML response from the server.</p>\n"
-    // "</body>\n"
-    // "</html>\n";
-	write (_client_fd, "HTTP/1.1 200 OK\r\n", 17);
-	write(_client_fd, httpResponse, strlen(httpResponse));
+	if (_method == "GET")
+		GetResponse();
+	else if (_method == "POST")
+		PostResponse(request);
+	else
+		MethodNotAllowed();
+		
+}
+
+void Request::GetResponse()
+{
+	if (_url == "/")
+		_url = "/index.html";
+	std::string responsefile  = WWW_FOLD + _url;
+	std::cout << responsefile << std::endl;
+	
+	std::ifstream ifstr(responsefile, std::ios::binary);
+	if (!ifstr)
+		return (PageNotFound());
+	std::string htmlContent((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
+	_response += _http_version + " " + HTTP_200;
+	if (_url.find(".css") != std::string::npos)
+		_response += CON_TYPE_CSS;
+	else
+		_response += CONTYPE_HTML;
+	_response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n\r\n";
+	_response += htmlContent;
+	
+
+	ssize_t bytes_written = write(_client_fd, _response.c_str(), strlen(_response.c_str()));
+	if (bytes_written == -1)
+	{
+		std::cerr << "Error: write failed" << std::endl;
+		close(_client_fd);
+		exit(EXIT_FAILURE);
+	}
+	//std::cout << _response << std::endl;
 }
