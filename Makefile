@@ -4,7 +4,8 @@ CFLAGS	:= -Wextra -Wall -Werror -g
 HEADERS	:= -I ./include -I $(LIBMLX)/include 
 
 SRCS := \
-	src/main/main.cpp \
+	src/Config.cpp \
+	src/Main.cpp \
 
 OBJS	:= $(SRCS:%.c=objs/%.o)
 OBJS_DIR = objs/
@@ -19,7 +20,7 @@ all: $(NAME)
 
 $(NAME): $(OBJS)
 	@echo "$(YELLOW)Compiling $(NAME)...$(RESET)"
-	c++ $(OBJS) -o $(NAME)
+	c++ -std=c++11 $(OBJS) -o $(NAME)
 	@echo "$(GREEN)$(NAME) compiled successfully!$(RESET)"
 
 $(OBJS_DIR)%.o: %.c
