@@ -6,27 +6,62 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/09 15:05:16 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/08/09 15:05:59 by dvan-kle      ########   odam.nl         */
+/*   Updated: 2024/08/09 18:05:30 by dvan-kle      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../incl/Request.hpp"
+#include "../include/Request.hpp"
+
+void Request::parseFullRequest(std::string request)
+{
+	contentLength(request);
+	std::cout << "Content-Length: " << _content_length << std::endl;
+	int left = _content_length - request.size();
+	std::cout << "Left: " << left << std::endl;
+	while (left > 0)
+	{
+		int bytes_read = read(_client_fd, _buffer, 1024);
+		if (bytes_read == -1)
+		{
+			std::cerr << "Error: read failed" << std::endl;
+			close(_client_fd);
+			exit(EXIT_FAILURE);
+		}
+		else if (bytes_read == 0)
+		{
+			std::cerr << "Error: client disconnected" << std::endl;
+			_client_fd = -1;
+			//exit(EXIT_FAILURE);
+		}
+		left -= bytes_read;
+		if (!(left > 0))
+			_buffer[bytes_read] = '\0';
+		request.append(_buffer);
+		std::cout << left << std::endl;
+	}
+	std::cout << "Request: " << request << std::endl;
+
+	
+}
 
 void Request::PostResponse(std::string request)
 {
+	std::cout << request << std::endl;
+	parseFullRequest(request);
+	
 	std::string boundary;
     std::string line;
     std::istringstream requestStream(request);
 
 	while (std::getline(requestStream, line) && line != "\r")
 	{
+		// std::cout << line << std::endl;
         if (line.find("Content-Type: multipart/form-data; boundary=") != std::string::npos)
 		{
             boundary = line.substr(line.find("=") + 1);
             boundary = "--" + boundary;
         }
     }
-
     if (boundary.empty())
         std::cout << "Boundary not found in the request headers" << std::endl;
 		
@@ -95,4 +130,19 @@ void Request::createDir(std::string name)
 	struct stat st = {0};
 	if (stat(name.c_str(), &st) == -1)
 		mkdir(name.c_str(), 0700);
+}
+
+void Request::contentLength(std::string request)
+{
+    size_t content_length_pos = request.find("Content-Length:");
+    if (content_length_pos != std::string::npos)
+	{
+        size_t start_pos = content_length_pos + 15;
+        size_t end_pos = request.find("\r\n", start_pos);
+        if (end_pos != std::string::npos)
+		{
+            std::string content_length_str = request.substr(start_pos, end_pos - start_pos);
+            _content_length = std::stoi(content_length_str);
+        }
+    }
 }

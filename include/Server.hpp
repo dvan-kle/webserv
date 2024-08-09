@@ -6,7 +6,7 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/07/26 15:32:25 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/08/01 15:27:00 by dvan-kle      ########   odam.nl         */
+/*   Updated: 2024/08/09 15:34:46 by dvan-kle      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -18,6 +18,7 @@
 #include <iostream>
 #include <unistd.h>
 #include <cstring>
+#include "Colors.hpp"
 
 #define MAX_EVENTS 10
 

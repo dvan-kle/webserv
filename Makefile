@@ -6,6 +6,11 @@ HEADERS	:= -I ./include -I $(LIBMLX)/include
 SRCS := \
 	src/Config.cpp \
 	src/Main.cpp \
+	src/Server.cpp \
+	src/Errors.cpp \
+	src/Request.cpp \
+	src/Post.cpp \
+
 
 OBJS	:= $(SRCS:%.c=objs/%.o)
 OBJS_DIR = objs/

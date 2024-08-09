@@ -32,5 +32,8 @@ webserv
 # Other build systems
 obj/
 
+# Upload folder
+uploads/
+
 # Logs
 *.log

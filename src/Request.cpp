@@ -6,28 +6,29 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/01 15:42:12 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/08/09 15:06:34 by dvan-kle      ########   odam.nl         */
+/*   Updated: 2024/08/09 17:58:58 by dvan-kle      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../incl/Request.hpp"
+#include "../include/Request.hpp"
 
 Request::Request(int client_fd) : _client_fd(client_fd)
 {
-	int bytes_read = read(_client_fd, _buffer, 1024);
-	if (bytes_read == -1)
-	{
-		std::cerr << "Error: read failed" << std::endl;
-		close(_client_fd);
-		exit(EXIT_FAILURE);
-	}
-	else if (bytes_read == 0)
-	{
-		std::cerr << "Error: client disconnected" << std::endl;
-		close(_client_fd);
-		//exit(EXIT_FAILURE);
-	}
-	_buffer[bytes_read] = '\0';
+		int bytes_read = read(_client_fd, _buffer, 1024);
+		if (bytes_read == -1)
+		{
+			std::cerr << "Error: read failed" << std::endl;
+			close(_client_fd);
+			exit(EXIT_FAILURE);
+		}
+		else if (bytes_read == 0)
+		{
+			std::cerr << "Error: client disconnected" << std::endl;
+			_client_fd = -1;
+			//exit(EXIT_FAILURE);
+		}
+		_buffer[bytes_read] = '\0';
+		
 }
 
 Request::~Request()
@@ -37,8 +38,6 @@ Request::~Request()
 
 void Request::ParseRequest()
 {
-	std::cout << _buffer << std::endl;
-	
 	std::string request(_buffer);
 	std::string::size_type pos = request.find("\r\n");
 	if (pos != std::string::npos)
@@ -47,6 +46,7 @@ void Request::ParseRequest()
 		
 		ParseLine(requestLine);
 
+		std::cout << BWHITE << "New request: " << RESET << std::endl;
 		std::cout << "Method: " << _method << std::endl;
 		std::cout << "URL: " << _url << std::endl;
 		std::cout << "HTTP Version: " << _http_version << std::endl << std::endl;
@@ -89,7 +89,7 @@ void Request::GetResponse()
 	if (_url == "/")
 		_url = "/index.html";
 	std::string responsefile  = WWW_FOLD + _url;
-	std::cout << responsefile << std::endl;
+	//std::cout << responsefile << std::endl;
 	
 	std::ifstream ifstr(responsefile, std::ios::binary);
 	if (!ifstr)
@@ -112,4 +112,9 @@ void Request::GetResponse()
 		exit(EXIT_FAILURE);
 	}
 	//std::cout << _response << std::endl;
+}
+
+int Request::getClientFd() const
+{
+	return _client_fd;
 }

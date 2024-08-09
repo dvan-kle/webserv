@@ -6,12 +6,12 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/07/26 15:32:01 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/08/01 16:09:26 by dvan-kle      ########   odam.nl         */
+/*   Updated: 2024/08/09 16:28:26 by dvan-kle      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../incl/Server.hpp"
-#include "../incl/Request.hpp"
+#include "../include/Server.hpp"
+#include "../include/Request.hpp"
 
 Server::Server(int port)
 {
@@ -32,7 +32,7 @@ Server::Server(int port)
 	}
 	// Bind the socket to the port
 	_address.sin_family = AF_INET;
-	_address.sin_addr.s_addr = INADDR_ANY;
+	_address.sin_addr.s_addr = inet_addr("127.0.0.1");
 	_address.sin_port = htons(port);
 	if (bind(_sock, (struct sockaddr*)&_address, sizeof(_address)) == -1)
 	{
@@ -45,7 +45,7 @@ Server::Server(int port)
 	
 	EpollCreate();
 	
-	std::cout << "Server is listening with address " << inet_ntoa(_address.sin_addr) << " on port " << port << std::endl;
+	std::cout << MAGENTA << "Server is listening with address " << inet_ntoa(_address.sin_addr) << " on port " << port << RESET << std::endl;
 	
 	EpollWait();
 }
@@ -74,8 +74,6 @@ void Server::EpollWait()
 {
 	while (true)
 	{
-		int i = 0;
-		std::cout << "Times ran: " << i++ << std::endl;
 		int nfds = epoll_wait(_epoll_fd, _events, MAX_EVENTS, -1);
 		if (nfds == -1)
 		{
@@ -114,6 +112,8 @@ void Server::EpollWait()
 void Server::HandleClient(int client_fd)
 {
 	Request request(client_fd);
+	if (request.getClientFd() == -1)
+		return;
 	request.ParseRequest();
 	
 }

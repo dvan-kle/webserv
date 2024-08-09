@@ -6,7 +6,7 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/01 15:40:39 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/08/09 14:03:56 by dvan-kle      ########   odam.nl         */
+/*   Updated: 2024/08/09 18:01:53 by dvan-kle      ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -17,6 +17,7 @@
 #include <cstring>
 #include <sstream>
 #include <sys/stat.h>
+#include "Colors.hpp"
 
 const std::string HTTP_200 = "200 OK\r\n";
 const std::string HTTP_400 = "400 Bad Request\r\n";
@@ -34,7 +35,9 @@ class Request
 	private:
 		int _client_fd;
 		char _buffer[1024];
+		std::string _data;
 		
+		int _content_length;
 		std::string _method;
 		std::string _url;
 		std::string _http_version;
@@ -50,6 +53,8 @@ class Request
 		~Request();
 
 		void ParseRequest();
+		void parseFullRequest(std::string request);
+		void contentLength(std::string request);
 		void ParseLine(std::string line);
 
 		void SendResponse(std::string request);
@@ -61,4 +66,5 @@ class Request
 		void createDir(std::string name);
 		
 		
+		int getClientFd() const;
 };

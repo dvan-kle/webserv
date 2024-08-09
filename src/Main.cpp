@@ -1,6 +1,7 @@
 #include "../include/Config.hpp"
 #include "../include/Colors.hpp"
 #include "../include/Logger.hpp"
+#include "../include/Server.hpp"
 
  /*                      *\
 |==========================|
@@ -94,27 +95,30 @@ void printServerConfig(const ServerConfig& config, int server_number) {
 |^^^^^^^^^^^^^^^^^^^^^^^^^^|
  \*                      */
 
-int main(int argc, char **argv) {
-    if (argc < 2) {
-        Logger::Error("Usage: " + std::string(argv[0]) + " <config_file>");
-        exit(1);
-    }
+int main(int argc, char **argv)
+{
+    // if (argc < 2) {
+    //     Logger::Error("Usage: " + std::string(argv[0]) + " <config_file>");
+    //     exit(1);
+    // }
 
-    std::vector<ServerConfig> servers = parseConfig(argv[1]);
-    Logger::Success("Configuration parsing completed successfully.");
+    // std::vector<ServerConfig> servers = parseConfig(argv[1]);
+    // Logger::Success("Configuration parsing completed successfully.");
 
-    std::cout << std::endl;
+    // std::cout << std::endl;
 
-    Logger::Info("Printing parsed configuration file(s).");
-    int server_number = 1;
-    for (const auto& server : servers) {
-        printServerConfig(server, server_number++);
-        std::cout << std::endl;
-    }
+    // Logger::Info("Printing parsed configuration file(s).");
+    // int server_number = 1;
+    // for (const auto& server : servers) {
+    //     printServerConfig(server, server_number++);
+    //     std::cout << std::endl;
+    // }
 
-    std::cout << std::endl;
+    // std::cout << std::endl;
 
-    Logger::Warning("Double check all includes, forbidden stuff, subject goals, eval sheet and etc before evaluation.");
+    // Logger::Warning("Double check all includes, forbidden stuff, subject goals, eval sheet and etc before evaluation.");
+
+	Server server(8080);
 
     return 0;
 }
