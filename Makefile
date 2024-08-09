@@ -4,8 +4,11 @@ CFLAGS	:= -Wextra -Wall -Werror -g
 HEADERS	:= -I ./include -I $(LIBMLX)/include 
 
 SRCS := \
-	src/Config.cpp \
 	src/Main.cpp \
+	src/Logger.cpp \
+	src/LocationConfig.cpp \
+	src/ServerConfig.cpp \
+	src/ConfigParser.cpp \
 
 OBJS	:= $(SRCS:%.c=objs/%.o)
 OBJS_DIR = objs/
