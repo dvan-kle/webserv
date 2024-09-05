@@ -6,11 +6,11 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/09 15:05:16 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/08/09 15:05:59 by dvan-kle      ########   odam.nl         */
+/*   Updated: 2024/09/05 09:50:50 by trstn4        ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../incl/Request.hpp"
+#include "../include/Request.hpp"
 
 void Request::PostResponse(std::string request)
 {

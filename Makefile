@@ -9,6 +9,10 @@ SRCS := \
 	src/LocationConfig.cpp \
 	src/ServerConfig.cpp \
 	src/ConfigParser.cpp \
+	src/Server.cpp \
+	src/Request.cpp \
+	src/Errors.cpp \
+	src/Post.cpp \
 
 OBJS	:= $(SRCS:%.c=objs/%.o)
 OBJS_DIR = objs/
@@ -23,7 +27,7 @@ all: $(NAME)
 
 $(NAME): $(OBJS)
 	@echo "$(YELLOW)Compiling $(NAME)...$(RESET)"
-	c++ -std=c++11 $(OBJS) -o $(NAME)
+	c++ -std=c++20 $(OBJS) -o $(NAME)
 	@echo "$(GREEN)$(NAME) compiled successfully!$(RESET)"
 
 $(OBJS_DIR)%.o: %.c

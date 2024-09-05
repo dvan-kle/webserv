@@ -6,11 +6,11 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/01 15:42:12 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/08/09 15:06:34 by dvan-kle      ########   odam.nl         */
+/*   Updated: 2024/09/05 09:50:35 by trstn4        ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../incl/Request.hpp"
+#include "../include/Request.hpp"
 
 Request::Request(int client_fd) : _client_fd(client_fd)
 {

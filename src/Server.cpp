@@ -6,12 +6,12 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/07/26 15:32:01 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/08/01 16:09:26 by dvan-kle      ########   odam.nl         */
+/*   Updated: 2024/09/05 09:50:45 by trstn4        ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../incl/Server.hpp"
-#include "../incl/Request.hpp"
+#include "../include/Server.hpp"
+#include "../include/Request.hpp"
 
 Server::Server(int port)
 {

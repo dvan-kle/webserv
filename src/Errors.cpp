@@ -6,11 +6,11 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/09 15:06:42 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/08/09 15:06:50 by dvan-kle      ########   odam.nl         */
+/*   Updated: 2024/09/05 09:54:31 by trstn4        ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
-#include "../incl/Request.hpp"
+#include "../include/Request.hpp"
 
 void Request::PageNotFound()
 {

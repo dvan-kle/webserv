@@ -1,5 +1,6 @@
 #include "../include/Logger.hpp"
 #include "../include/ConfigParser.hpp"
+#include "../include/Server.hpp"
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -21,6 +22,8 @@ int main(int argc, char **argv) {
     }
 
     Logger::Warning("Double check all includes, forbidden stuff, subject goals, eval sheet, etc., before evaluation!");
+
+    Server server(8080);
 
     return 0;
 }
