@@ -6,7 +6,7 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/01 15:40:39 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/08/09 14:03:56 by dvan-kle      ########   odam.nl         */
+/*   Updated: 2024/09/05 16:41:58 by trstn4        ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -59,6 +59,8 @@ class Request
 		void PageNotFound();
 		void MethodNotAllowed();
 		void createDir(std::string name);
-		
-		
+
+		void executeCGI(std::string path, std::string method, std::string body);
+		bool isCgiRequest(std::string path);
+
 };
