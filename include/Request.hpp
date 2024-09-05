@@ -6,7 +6,7 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/01 15:40:39 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/09/05 16:41:58 by trstn4        ########   odam.nl         */
+/*   Updated: 2024/09/05 17:18:48 by trstn4        ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -41,6 +41,8 @@ class Request
 		
 		std::string _request;
 		std::string _response;
+
+		std::string _body;
 		
 	
 	public:
@@ -62,5 +64,6 @@ class Request
 
 		void executeCGI(std::string path, std::string method, std::string body);
 		bool isCgiRequest(std::string path);
-
+		
+		std::string unchunkRequestBody(const std::string &buffer);
 };

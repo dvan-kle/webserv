@@ -6,7 +6,7 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/01 15:42:12 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/09/05 17:09:46 by trstn4        ########   odam.nl         */
+/*   Updated: 2024/09/05 17:18:03 by trstn4        ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -14,23 +14,55 @@
 #include <signal.h>
 #include <sys/wait.h>
 
-Request::Request(int client_fd) : _client_fd(client_fd)
-{
-	int bytes_read = read(_client_fd, _buffer, 1024);
-	if (bytes_read == -1)
-	{
-		std::cerr << "Error: read failed" << std::endl;
-		close(_client_fd);
-		exit(EXIT_FAILURE);
-	}
-	else if (bytes_read == 0)
-	{
-		std::cerr << "Error: client disconnected" << std::endl;
-		close(_client_fd);
-		//exit(EXIT_FAILURE);
-	}
-	_buffer[bytes_read] = '\0';
+#include <sstream>
+
+Request::Request(int client_fd) : _client_fd(client_fd) {
+    int bytes_read = read(_client_fd, _buffer, 1024);
+    if (bytes_read == -1) {
+        std::cerr << "Error: read failed" << std::endl;
+        close(_client_fd);
+        exit(EXIT_FAILURE);
+    } else if (bytes_read == 0) {
+        std::cerr << "Error: client disconnected" << std::endl;
+        close(_client_fd);
+    }
+    _buffer[bytes_read] = '\0';
+
+    // Check if the request is using chunked transfer encoding
+    std::string headers(_buffer);
+    if (headers.find("Transfer-Encoding: chunked") != std::string::npos) {
+        _body = unchunkRequestBody(_buffer); // Unchunk the request body
+    } else {
+        _body = std::string(_buffer); // No chunking, use the body directly
+    }
 }
+
+std::string Request::unchunkRequestBody(const std::string &buffer) {
+    std::istringstream stream(buffer);
+    std::string line;
+    std::string body;
+    while (std::getline(stream, line)) {
+        // Read chunk size in hexadecimal
+        int chunkSize;
+        std::stringstream hexStream(line);
+        hexStream >> std::hex >> chunkSize;
+        if (chunkSize == 0) {
+            break; // Last chunk, stop reading
+        }
+
+        // Read the chunk data
+        char *chunkData = new char[chunkSize + 1];
+        stream.read(chunkData, chunkSize);
+        chunkData[chunkSize] = '\0';
+        body += std::string(chunkData);
+        delete[] chunkData;
+
+        // Skip the CRLF after the chunk
+        std::getline(stream, line);
+    }
+    return body;
+}
+
 
 Request::~Request()
 {
@@ -48,7 +80,7 @@ bool Request::isCgiRequest(std::string path) {
 
 void Request::executeCGI(std::string path, std::string method, std::string body) {
     try {
-        char *const envp[] = {NULL}; // Environment variables (idk maybe we need to pass others gotta check)
+        char *const envp[] = {NULL}; // Environment variables
         char *const cgiArgv[] = {(char *)path.c_str(), NULL}; // Pass the CGI script path as the first argument
 
         int pipeFd[2];
@@ -69,8 +101,13 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
             dup2(pipeFd[1], STDOUT_FILENO); // Redirect output to pipe
             close(pipeFd[1]);
 
-            // Optionally: we can also set a timeout for the child process itself but idk lets check later
-            alarm(2);  // Automatically kill the process after 2 seconds (our timeout method for infin while loop etc)
+            // Pass the unchunked body to the CGI process via stdin
+            if (!body.empty()) {
+                write(STDIN_FILENO, body.c_str(), body.length());
+            }
+
+            // Optionally: Set a timeout for the child process
+            alarm(2);  // Automatically kill the process after 2 seconds
 
             // Execute CGI script
             if (path.find(".py") != std::string::npos) {
@@ -80,7 +117,7 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
                     exit(1);
                 }
             } else {
-                // General CGI script (e.g., Bash or other interpreters)
+                // General CGI script
                 if (execve(path.c_str(), cgiArgv, envp) == -1) {
                     std::cerr << "Failed to execute CGI script" << std::endl;
                     exit(1);
@@ -116,7 +153,6 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
                     }
                     break;
                 }
-                // Allow for some delay before rechecking
                 usleep(10000); // Sleep for 10ms before checking again
             }
 
