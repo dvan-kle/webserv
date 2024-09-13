@@ -6,7 +6,7 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/01 15:42:12 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/09/05 17:18:03 by trstn4        ########   odam.nl         */
+/*   Updated: 2024/09/13 23:11:21 by trstn4        ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
@@ -16,24 +16,61 @@
 
 #include <sstream>
 
-Request::Request(int client_fd) : _client_fd(client_fd) {
-    int bytes_read = read(_client_fd, _buffer, 1024);
-    if (bytes_read == -1) {
-        std::cerr << "Error: read failed" << std::endl;
-        close(_client_fd);
-        exit(EXIT_FAILURE);
-    } else if (bytes_read == 0) {
-        std::cerr << "Error: client disconnected" << std::endl;
-        close(_client_fd);
-    }
-    _buffer[bytes_read] = '\0';
+#include "../include/Request.hpp"
 
-    // Check if the request is using chunked transfer encoding
-    std::string headers(_buffer);
-    if (headers.find("Transfer-Encoding: chunked") != std::string::npos) {
-        _body = unchunkRequestBody(_buffer); // Unchunk the request body
-    } else {
-        _body = std::string(_buffer); // No chunking, use the body directly
+Request::Request(int client_fd) : _client_fd(client_fd) {
+    std::string headers;
+    char buffer[1024];
+    int bytes_read;
+    size_t total_bytes_read = 0;
+
+    // Read headers
+    while (true) {
+        bytes_read = read(_client_fd, buffer, sizeof(buffer));
+        if (bytes_read == -1) {
+            std::cerr << "Error: read failed" << std::endl;
+            close(_client_fd);
+            exit(EXIT_FAILURE);
+        } else if (bytes_read == 0) {
+            // Client closed the connection
+            break;
+        }
+        headers.append(buffer, bytes_read);
+        total_bytes_read += bytes_read;
+
+        // Check if we have reached the end of headers
+        size_t pos = headers.find("\r\n\r\n");
+        if (pos != std::string::npos) {
+            // We have read all headers
+            _headers = headers.substr(0, pos + 4);
+            _body = headers.substr(pos + 4); // Any remaining data after headers
+            break;
+        }
+    }
+
+    // Parse Content-Length
+    size_t content_length = 0;
+    size_t cl_pos = _headers.find("Content-Length:");
+    if (cl_pos != std::string::npos) {
+        size_t cl_end = _headers.find("\r\n", cl_pos);
+        std::string cl_str = _headers.substr(cl_pos + 15, cl_end - (cl_pos + 15));
+        content_length = std::stoi(cl_str);
+    }
+
+    // Read the rest of the body based on Content-Length
+    size_t body_length = _body.size();
+    while (body_length < content_length) {
+        bytes_read = read(_client_fd, buffer, sizeof(buffer));
+        if (bytes_read == -1) {
+            std::cerr << "Error: read failed" << std::endl;
+            close(_client_fd);
+            exit(EXIT_FAILURE);
+        } else if (bytes_read == 0) {
+            // Client closed the connection unexpectedly
+            break;
+        }
+        _body.append(buffer, bytes_read);
+        body_length += bytes_read;
     }
 }
 
@@ -181,12 +218,11 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
 }
 
 void Request::ParseRequest() {
-    std::cout << _buffer << std::endl;
-    std::string request(_buffer);
-    std::string::size_type pos = request.find("\r\n");
+    std::cout << _headers << std::endl;
+    std::string::size_type pos = _headers.find("\r\n");
 
     if (pos != std::string::npos) {
-        std::string requestLine = request.substr(0, pos);
+        std::string requestLine = _headers.substr(0, pos);
         ParseLine(requestLine);
 
         std::cout << "Method: " << _method << std::endl;
@@ -194,14 +230,15 @@ void Request::ParseRequest() {
         std::cout << "HTTP Version: " << _http_version << std::endl << std::endl;
 
         if (isCgiRequest(_url)) {
-            executeCGI(WWW_FOLD + _url, _method, request);
+            executeCGI(WWW_FOLD + _url, _method, _body);
         } else {
-            SendResponse(request);
+            SendResponse(_body); // Pass the body to SendResponse
         }
     } else {
         std::cerr << "Invalid HTTP request" << std::endl;
     }
 }
+
 
 void Request::ParseLine(std::string line)
 {
@@ -219,16 +256,15 @@ void Request::ParseLine(std::string line)
 	_http_version = line.substr(prev);
 }
 
-void Request::SendResponse(std::string request)
-{
-	if (_method == "GET")
-		GetResponse();
-	else if (_method == "POST")
-		PostResponse(request);
-	else
-		MethodNotAllowed();
-		
+void Request::SendResponse(const std::string &requestBody) {
+    if (_method == "GET")
+        GetResponse();
+    else if (_method == "POST")
+        PostResponse(requestBody);
+    else
+        MethodNotAllowed();
 }
+
 
 void Request::GetResponse()
 {

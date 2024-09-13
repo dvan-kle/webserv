@@ -6,93 +6,123 @@
 /*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
 /*                                                   +#+                      */
 /*   Created: 2024/08/09 15:05:16 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/09/05 09:50:50 by trstn4        ########   odam.nl         */
+/*   Updated: 2024/09/13 23:11:38 by trstn4        ########   odam.nl         */
 /*                                                                            */
 /* ************************************************************************** */
 
 #include "../include/Request.hpp"
 
-void Request::PostResponse(std::string request)
-{
-	std::string boundary;
+void Request::PostResponse(const std::string &requestBody) {
+    std::string boundary;
     std::string line;
-    std::istringstream requestStream(request);
+    std::istringstream headerStream(_headers);
 
-	while (std::getline(requestStream, line) && line != "\r")
-	{
-        if (line.find("Content-Type: multipart/form-data; boundary=") != std::string::npos)
-		{
-            boundary = line.substr(line.find("=") + 1);
-            boundary = "--" + boundary;
+    // Extract boundary from headers
+    while (std::getline(headerStream, line) && line != "\r") {
+        if (line.find("Content-Type: multipart/form-data; boundary=") != std::string::npos) {
+            size_t boundaryStart = line.find("boundary=") + 9;
+            boundary = line.substr(boundaryStart);
+            // Remove any trailing whitespace or line breaks
+            boundary.erase(boundary.find_last_not_of(" \t\r\n") + 1);
+            std::cout << "Extracted boundary: " << boundary << std::endl;
+            break;
         }
     }
 
-    if (boundary.empty())
-        std::cout << "Boundary not found in the request headers" << std::endl;
-		
-    std::string fileData;
-    std::string filename;
-    bool inFile = false;
+    if (boundary.empty()) {
+        std::cerr << "Boundary not found in the request headers" << std::endl;
+        return;
+    }
 
-    // Read the multipart data and extract the file content
-    while (std::getline(requestStream, line))
-	{
-        if (line.find(boundary) != std::string::npos)
-		{
-            if (inFile)
-                break;
-            inFile = true;
-            // Skip headers for the file part
-            for (int i = 0; i < 2; ++i)
-			{
-                std::getline(requestStream, line);
-                if (line.find("filename=") != std::string::npos)
-				{
-                    filename = line.substr(line.find("filename=") + 10);
-                    filename = filename.substr(0, filename.size() - 2); // Remove trailing quote and CR
-                }
-            }
-            std::getline(requestStream, line); // Skip the empty line
+    std::string boundaryMarker = "--" + boundary;
+    std::string endBoundaryMarker = boundaryMarker + "--";
+
+    // Now process the body
+    std::string body = requestBody;
+
+    size_t startPos = body.find(boundaryMarker);
+    size_t endPos = body.rfind(endBoundaryMarker);
+
+    if (startPos == std::string::npos || endPos == std::string::npos) {
+        std::cerr << "Invalid multipart request: boundaries not found!" << std::endl;
+        return;
+    }
+
+    // Move past the initial boundary and CRLF
+    startPos += boundaryMarker.length() + 2;
+
+    // Iterate through each part of the multipart data
+    while (startPos < endPos) {
+        // Find the header and data separator
+        size_t headerEndPos = body.find("\r\n\r\n", startPos);
+        if (headerEndPos == std::string::npos) {
+            std::cerr << "Invalid multipart data: header end not found!" << std::endl;
+            return;
         }
-		else if (inFile)
-            fileData += line + "\n";
+
+        // Extract headers
+        std::string headers = body.substr(startPos, headerEndPos - startPos);
+        std::cout << "Headers: " << headers << std::endl;
+
+        // Extract filename from headers
+        size_t filenamePos = headers.find("filename=\"");
+        if (filenamePos == std::string::npos) {
+            std::cerr << "Filename not found in headers!" << std::endl;
+            return;
+        }
+        size_t filenameEndPos = headers.find("\"", filenamePos + 10);
+        std::string filename = headers.substr(filenamePos + 10, filenameEndPos - (filenamePos + 10));
+
+        // Move to the file data start
+        startPos = headerEndPos + 4;
+
+        // Find the next boundary marker
+        size_t nextBoundary = body.find(boundaryMarker, startPos);
+        if (nextBoundary == std::string::npos) {
+            std::cerr << "Invalid multipart data: next boundary not found!" << std::endl;
+            return;
+        }
+
+        // Extract file content
+        std::string fileContent = body.substr(startPos, nextBoundary - startPos - 2); // Skip trailing CRLF
+
+        // Create uploads directory if it does not exist
+        std::string uploadDir = "uploads";
+        createDir(uploadDir);
+
+        // Save the file content to the uploads directory
+        std::string filePath = uploadDir + "/" + filename;
+        std::ofstream outFile(filePath, std::ios::binary);
+        if (!outFile) {
+            std::cerr << "Error opening output file for writing: " << filePath << std::endl;
+            return;
+        }
+        outFile.write(fileContent.c_str(), fileContent.size());
+        outFile.close();
+
+        std::cout << "File uploaded successfully: " << filePath << std::endl;
+
+        // Move to the next part (skip boundary and CRLF)
+        startPos = nextBoundary + boundaryMarker.length() + 2;
     }
 
-    // Remove the last line's newline character
-	std::cout << "filename: " << filename << std::endl;
-	std::cout << "filedata: " << fileData << std::endl;
-	
-    if (!fileData.empty())
-        fileData.pop_back();
+    // Send response to the client
+    std::string htmlContent = "<html><body><h1>File uploaded successfully!</h1></body></html>";
+    _response += _http_version + " " + HTTP_200 + CONTYPE_HTML;
+    _response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n\r\n";
+    _response += htmlContent;
 
-    // Create the uploads directory if it does not exist
-    std::string uploadDir = "uploads";
-    createDir(uploadDir);
-
-    // Save the file content to the uploads directory
-    std::string filePath = uploadDir + "/" + filename;
-    std::ofstream outFile(filePath, std::ios::binary);
-    if (!outFile)
-	{
-        std::cout << "Error opening output file for writing" << std::endl;
-		return;
-    }
-    outFile << fileData;
-    outFile.close();
-
-    std::string htlmContent = "<html><body><h1>File uploaded successfully!</h1></body></html>";
-	_response += _http_version + " " + HTTP_200 + CONTYPE_HTML;
-	_response += CONTENT_LENGTH + std::to_string(htlmContent.size()) + "\r\n\r\n";
-	_response += htlmContent;
-	
-	ssize_t bytes_written = write(_client_fd, _response.c_str(), strlen(_response.c_str()));
-	if (bytes_written == -1)
-		std::cout << "Error: write failed" << std::endl;
+    ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
+    if (bytes_written == -1)
+        std::cerr << "Error: write failed" << std::endl;
 }
 
-void Request::createDir(std::string name)
-{
-	struct stat st = {0};
-	if (stat(name.c_str(), &st) == -1)
-		mkdir(name.c_str(), 0700);
+void Request::createDir(const std::string &name) {
+    struct stat st = {0};
+    if (stat(name.c_str(), &st) == -1) {
+        if (mkdir(name.c_str(), 0700) == -1) {
+            std::cerr << "Error creating directory: " << name << std::endl;
+            // Handle the error as needed
+        }
+    }
 }

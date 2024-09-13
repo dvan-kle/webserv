@@ -1,15 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        ::::::::            */
-/*   Request.hpp                                        :+:    :+:            */
-/*                                                     +:+                    */
-/*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
-/*                                                   +#+                      */
-/*   Created: 2024/08/01 15:40:39 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/09/05 17:18:48 by trstn4        ########   odam.nl         */
-/*                                                                            */
-/* ************************************************************************** */
-
 #pragma once
 #include <unistd.h>
 #include <iostream>
@@ -31,39 +19,40 @@ const std::string WWW_FOLD = "www";
 
 class Request
 {
-	private:
-		int _client_fd;
-		char _buffer[1024];
-		
-		std::string _method;
-		std::string _url;
-		std::string _http_version;
-		
-		std::string _request;
-		std::string _response;
+private:
+    int _client_fd;
+    char _buffer[1024];
+    
+    std::string _method;
+    std::string _url;
+    std::string _http_version;
+    
+    std::string _request;
+    std::string _response;
 
-		std::string _body;
-		
-	
-	public:
-		Request(int client_fd);
-		Request(const Request &src) = delete;
-		Request &operator=(const Request &src) = delete;
-		~Request();
+    std::string _body;
 
-		void ParseRequest();
-		void ParseLine(std::string line);
+    std::string _headers; // Add this line
 
-		void SendResponse(std::string request);
-		void GetResponse();
-		void PostResponse(std::string request);
-		
-		void PageNotFound();
-		void MethodNotAllowed();
-		void createDir(std::string name);
+public:
+    Request(int client_fd);
+    Request(const Request &src) = delete;
+    Request &operator=(const Request &src) = delete;
+    ~Request();
 
-		void executeCGI(std::string path, std::string method, std::string body);
-		bool isCgiRequest(std::string path);
-		
-		std::string unchunkRequestBody(const std::string &buffer);
+    void ParseRequest();
+    void ParseLine(std::string line);
+
+    void SendResponse(const std::string &requestBody); // Adjusted parameter type
+    void GetResponse();
+    void PostResponse(const std::string &requestBody); // Adjusted parameter type
+    
+    void PageNotFound();
+    void MethodNotAllowed();
+    void createDir(const std::string &name); // Adjusted parameter type
+
+    void executeCGI(std::string path, std::string method, std::string body);
+    bool isCgiRequest(std::string path);
+    
+    std::string unchunkRequestBody(const std::string &buffer);
 };
