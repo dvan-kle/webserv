@@ -334,7 +334,7 @@ void parseConfigFromJsonValue(const JsonValue& json, std::vector<ServerConfig>& 
     }
 }
 
-void parseConfig(int argc, char* argv[]) {
+std::vector<ServerConfig> parseConfig(int argc, char* argv[]) {
     std::string config_file = "webserv.json";
     if (argc > 1) {
         config_file = argv[1];
@@ -372,4 +372,6 @@ void parseConfig(int argc, char* argv[]) {
 
     // Display the parsed configuration (for testing)
     displayConfig(servers);
+
+    return servers;
 }

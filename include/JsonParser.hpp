@@ -60,6 +60,6 @@ class JsonParser {
         JsonValue parse();
 };
 
-void parseConfig(int argc, char* argv[]);
+std::vector<ServerConfig> parseConfig(int argc, char* argv[]);
 
 #endif

@@ -7,9 +7,12 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    parseConfig(argc, argv);
+    std::vector<ServerConfig> servers = parseConfig(argc, argv);
 
-    Server server(8080);
+    for (const auto& server : servers) {
+        std::cout << server.listen_port;
+        Server host_server(server.listen_port);
+    }
 
     return 0;
 }
