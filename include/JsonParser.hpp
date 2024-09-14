@@ -3,6 +3,8 @@
 
 #include "Libaries.hpp"
 
+enum class JsonType { Null, Bool, Number, String, Array, Object };
+
 struct LocationConfig {
     std::string path;
     std::vector<std::string> methods;
@@ -25,10 +27,6 @@ struct ServerConfig {
     std::vector<LocationConfig> locations;
 };
 
-enum class JsonType { Null, Bool, Number, String, Array, Object };
-
-struct JsonValue;
-
 struct JsonValue {
     JsonType type;
     bool bool_value;
@@ -39,8 +37,6 @@ struct JsonValue {
 
     JsonValue() : type(JsonType::Null) {}
 };
-
-void parseConfig(int argc, char* argv[]);
 
 class JsonParser {
     private:
@@ -61,15 +57,9 @@ class JsonParser {
 
     public:
         JsonParser(const std::string& input) : input_(input), pos_(0) {}
-
-        JsonValue parse() {
-            skipWhitespace();
-            JsonValue value = parseValue();
-            skipWhitespace();
-            if (pos_ != input_.length())
-                throw std::runtime_error("Extra characters after JSON data");
-            return value;
-        }
+        JsonValue parse();
 };
+
+void parseConfig(int argc, char* argv[]);
 
 #endif

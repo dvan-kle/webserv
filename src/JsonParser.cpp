@@ -192,6 +192,56 @@ void JsonParser::expect(const std::string& expected) {
     }
 }
 
+JsonValue JsonParser::parse() {
+    skipWhitespace();
+    JsonValue value = parseValue();
+    skipWhitespace();
+    if (pos_ != input_.length())
+        throw std::runtime_error("Extra characters after JSON data");
+    return value;
+}
+
+// Function to display the parsed configuration (for testing purposes)
+void displayConfig(const std::vector<ServerConfig>& servers) {
+    for (const auto& server : servers) {
+        std::cout << "Server:" << std::endl;
+        std::cout << "  Listen: " << server.listen_host << ":" << server.listen_port << std::endl;
+        std::cout << "  Server Name: " << server.server_name << std::endl;
+        std::cout << "  Client Max Body Size: " << server.client_max_body_size << std::endl;
+
+        std::cout << "  Error Pages:" << std::endl;
+        for (const auto& error_page : server.error_pages) {
+            std::cout << "    " << error_page.first << " => " << error_page.second << std::endl;
+        }
+
+        std::cout << "  Locations:" << std::endl;
+        for (const auto& loc : server.locations) {
+            std::cout << "    Location: " << loc.path << std::endl;
+            std::cout << "      Methods: ";
+            for (const auto& method : loc.methods) {
+                std::cout << method << " ";
+            }
+            std::cout << std::endl;
+            if (!loc.redirection.empty())
+                std::cout << "      Redirection: " << loc.redirection << std::endl;
+            if (loc.return_code != 0)
+                std::cout << "      Return Code: " << loc.return_code << std::endl;
+            if (!loc.root.empty())
+                std::cout << "      Root: " << loc.root << std::endl;
+            std::cout << "      Autoindex: " << (loc.autoindex ? "On" : "Off") << std::endl;
+            if (!loc.index.empty())
+                std::cout << "      Index: " << loc.index << std::endl;
+            if (!loc.upload_path.empty())
+                std::cout << "      Upload Path: " << loc.upload_path << std::endl;
+            if (!loc.cgi_extension.empty())
+                std::cout << "      CGI Extension: " << loc.cgi_extension << std::endl;
+            if (!loc.cgi_path.empty())
+                std::cout << "      CGI Path: " << loc.cgi_path << std::endl;
+        }
+        std::cout << std::endl;
+    }
+}
+
 void parseConfigFromJsonValue(const JsonValue& json, std::vector<ServerConfig>& servers) {
     if (json.type != JsonType::Object || json.object_value.find("servers") == json.object_value.end()) {
         throw std::runtime_error("Invalid configuration format: 'servers' key not found");
@@ -281,47 +331,6 @@ void parseConfigFromJsonValue(const JsonValue& json, std::vector<ServerConfig>& 
             }
         }
         servers.push_back(server);
-    }
-}
-
-// Function to display the parsed configuration (for testing purposes)
-void displayConfig(const std::vector<ServerConfig>& servers) {
-    for (const auto& server : servers) {
-        std::cout << "Server:" << std::endl;
-        std::cout << "  Listen: " << server.listen_host << ":" << server.listen_port << std::endl;
-        std::cout << "  Server Name: " << server.server_name << std::endl;
-        std::cout << "  Client Max Body Size: " << server.client_max_body_size << std::endl;
-
-        std::cout << "  Error Pages:" << std::endl;
-        for (const auto& error_page : server.error_pages) {
-            std::cout << "    " << error_page.first << " => " << error_page.second << std::endl;
-        }
-
-        std::cout << "  Locations:" << std::endl;
-        for (const auto& loc : server.locations) {
-            std::cout << "    Location: " << loc.path << std::endl;
-            std::cout << "      Methods: ";
-            for (const auto& method : loc.methods) {
-                std::cout << method << " ";
-            }
-            std::cout << std::endl;
-            if (!loc.redirection.empty())
-                std::cout << "      Redirection: " << loc.redirection << std::endl;
-            if (loc.return_code != 0)
-                std::cout << "      Return Code: " << loc.return_code << std::endl;
-            if (!loc.root.empty())
-                std::cout << "      Root: " << loc.root << std::endl;
-            std::cout << "      Autoindex: " << (loc.autoindex ? "On" : "Off") << std::endl;
-            if (!loc.index.empty())
-                std::cout << "      Index: " << loc.index << std::endl;
-            if (!loc.upload_path.empty())
-                std::cout << "      Upload Path: " << loc.upload_path << std::endl;
-            if (!loc.cgi_extension.empty())
-                std::cout << "      CGI Extension: " << loc.cgi_extension << std::endl;
-            if (!loc.cgi_path.empty())
-                std::cout << "      CGI Path: " << loc.cgi_path << std::endl;
-        }
-        std::cout << std::endl;
     }
 }
 
