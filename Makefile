@@ -6,9 +6,7 @@ HEADERS	:= -I ./include -I $(LIBMLX)/include
 SRCS := \
 	src/Main.cpp \
 	src/Logger.cpp \
-	src/LocationConfig.cpp \
-	src/ServerConfig.cpp \
-	src/ConfigParser.cpp \
+	src/JsonParser.cpp \
 	src/Server.cpp \
 	src/Request.cpp \
 	src/Errors.cpp \
