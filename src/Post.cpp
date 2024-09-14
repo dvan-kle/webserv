@@ -1,15 +1,3 @@
-/* ************************************************************************** */
-/*                                                                            */
-/*                                                        ::::::::            */
-/*   Post.cpp                                           :+:    :+:            */
-/*                                                     +:+                    */
-/*   By: dvan-kle <dvan-kle@student.codam.nl>         +#+                     */
-/*                                                   +#+                      */
-/*   Created: 2024/08/09 15:05:16 by dvan-kle      #+#    #+#                 */
-/*   Updated: 2024/09/13 23:11:38 by trstn4        ########   odam.nl         */
-/*                                                                            */
-/* ************************************************************************** */
-
 #include "../include/Request.hpp"
 
 void Request::PostResponse(const std::string &requestBody) {
