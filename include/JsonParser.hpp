@@ -1,5 +1,4 @@
-#ifndef JSONPARSER_HPP
-#define JSONPARSER_HPP
+#pragma once
 
 #include "Libaries.hpp"
 
@@ -62,5 +61,3 @@ class JsonParser {
 };
 
 std::vector<ServerConfig> parseConfig(int argc, char* argv[]);
-
-#endif

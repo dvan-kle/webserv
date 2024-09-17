@@ -2,7 +2,7 @@
 	"servers": [
 	  {
 		"listen_host": "0.0.0.0",
-		"listen_port": 8082,
+		"listen_port": 8083,
 		"server_name": "Server1 op poort 8082",
 		"error_pages": {
 		  "404": "/404.html",
@@ -38,7 +38,7 @@
 	  },
 	  {
 		"listen_host": "0.0.0.0",
-		"listen_port": 8080,
+		"listen_port": 8081,
 		"server_name": "Server2 op poort 8080",
 		"error_pages": {
 		  "404": "/404.html",
