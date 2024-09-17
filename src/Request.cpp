@@ -1,7 +1,9 @@
 #include "../include/Request.hpp"
+#include "../include/JsonParser.hpp"
 
 // Constructor
-Request::Request(int client_fd, ServerConfig server) : _client_fd(client_fd), server(server) {
+Request::Request(int client_fd, ServerConfig server) : _client_fd(client_fd), _config(server)
+{
     char buffer[1024];
     std::string headers;
     int bytes_read;
@@ -158,7 +160,8 @@ void Request::GetResponse()
 	else
 		_response += CONTYPE_HTML;
 	_response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n";
-    _response += "Server: " + server.server_name  + "\r\n\r\n";
+    _response += "Date: " + getCurrentTimeHttpFormat() + "\r\n";
+    _response += "Server: " + _config.server_name  + "\r\n\r\n";
 	_response += htmlContent;
 	
 
@@ -169,4 +172,19 @@ void Request::GetResponse()
 		close(_client_fd);
 		exit(EXIT_FAILURE);
 	}
+}
+
+std::string Request::getCurrentTimeHttpFormat()
+{
+    // Get the current time
+    std::time_t now = std::time(nullptr);
+
+    std::tm *gmt_time = std::gmtime(&now);
+    std::ostringstream ss;
+
+    // Format the time according to HTTP date standard (RFC 7231)
+    // Example: "Tue, 17 Sep 2024 16:04:55 GMT"
+    ss << std::put_time(gmt_time, "%a, %d %b %Y %H:%M:%S GMT");
+
+    return ss.str();
 }

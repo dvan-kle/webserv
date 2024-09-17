@@ -1,5 +1,6 @@
 #pragma once
 #include "Libaries.hpp"
+#include "JsonParser.hpp"
 
 const std::string HTTP_200 = "200 OK\r\n";
 const std::string HTTP_400 = "400 Bad Request\r\n";
@@ -29,7 +30,7 @@ private:
 
     std::string _headers; // Add this line
 
-    ServerConfig server;
+    ServerConfig _config;
 
 public:
     Request(int client_fd, ServerConfig server);
@@ -53,4 +54,5 @@ public:
     bool isCgiRequest(std::string path);
     
     std::string unchunkRequestBody(const std::string &buffer);
+    std::string getCurrentTimeHttpFormat();
 };
