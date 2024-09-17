@@ -3,27 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>File Upload Page</title>
-    <link rel="stylesheet" href="css/upload.css">
+    <title>File Upload</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-	<header>
-        <h1>Webserv</h1>
+    <header>
+        <h1>Upload Files</h1>
     </header>
+
+    <!-- Navigation Bar -->
     <nav>
-        <a href="index.html">Home</a>
-        <a href="upload.html">Upload</a>
-        <a href="contact.html">Contact</a>
+        <a href="index.html">GET</a>
+        <a href="upload.html">POST</a>
+        <a href="delete.html">DELETE</a>
     </nav>
-	<main>
-		<div class="upload-container">
-			<h2>Upload Your File</h2>
-			<form action="/upload.html" method="post" enctype="multipart/form-data">
-				<label for="file-upload">Choose a file to upload:</label>
-				<input type="file" id="file-upload" name="file-upload" required>
-				<input type="submit" value="Upload File">
-			</form>
-		</div>
-	</main>
+
+    <main>
+        <div class="upload-container">
+            <h2>Upload Your File</h2>
+            <form action="/upload" method="post" enctype="multipart/form-data">
+                <label for="file-upload">Choose a file to upload:</label>
+                <input type="file" id="file-upload" name="file" required>
+                <input type="submit" value="Upload File">
+            </form>
+        </div>
+    </main>
+
+    <footer>
+        &copy; 2024 My Website. All rights reserved.
+    </footer>
 </body>
 </html>

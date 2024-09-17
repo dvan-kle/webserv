@@ -1,20 +1,41 @@
-body {
-    font-family: Arial, sans-serif;
+/* Basic reset */
+* {
     margin: 0;
     padding: 0;
-    background-color: #f4f4f4;
-    color: #333;
+    box-sizing: border-box;
 }
 
+/* Body styling with minimum height */
+html, body {
+    height: 100%;
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Make the main content area grow to fill available space */
+main {
+    flex-grow: 1;
+    padding: 2rem;
+    max-width: 900px;
+    margin: 2rem auto;
+    background-color: white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+}
+
+/* Header styling */
 header {
     background-color: #007bff;
-	font-style: italic;
-    color: #fff;
-    padding: 0.5rem;
+    color: white;
+    padding: 1.5rem;
     text-align: center;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Navigation bar */
 nav {
     display: flex;
     justify-content: center;
@@ -23,7 +44,7 @@ nav {
 }
 
 nav a {
-    color: #fff;
+    color: white;
     padding: 1rem 2rem;
     text-decoration: none;
     text-transform: uppercase;
@@ -34,35 +55,71 @@ nav a:hover {
     background-color: #004494;
 }
 
-main {
-    padding: 2rem;
-    background-color: #fff;
-    max-width: 800px;
-    margin: 2rem auto;
+/* Form containers */
+.upload-container, .delete-container {
+    background: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
+    max-width: 500px;
+    width: 100%;
+    margin: 0 auto;
 }
 
+/* Form header */
+.upload-container h2, .delete-container h2 {
+    margin-bottom: 20px;
+    font-size: 24px;
+    text-align: center;
+    color: #333;
+}
+
+/* Label styling */
+form label {
+    margin-bottom: 10px;
+    font-size: 16px;
+    color: #555;
+}
+
+/* Input field styling */
+form input[type="file"], form input[type="text"] {
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    width: 100%;
+    transition: border-color 0.3s;
+}
+
+form input[type="file"]:hover, form input[type="text"]:hover {
+    border-color: #ccc;
+}
+
+/* Button styling */
+form input[type="submit"], form button {
+    padding: 10px;
+    border: none;
+    border-radius: 5px;
+    background-color: #007BFF;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: 100%;
+}
+
+form input[type="submit"]:hover, form button:hover {
+    background-color: #0056b3;
+}
+
+/* Footer styling */
 footer {
     background-color: #007bff;
-    color: #fff;
+    color: white;
     text-align: center;
     padding: 1rem;
-    position: fixed;
     width: 100%;
-    bottom: 0;
     box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.1);
-}
-
-.paragraph-box {
-    background-color: #e7f1ff;
-    border-left: 4px solid #007bff;
-    margin: 1.5rem 0;
-    padding: 1rem 1.5rem;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-radius: 8px;
-}
-
-.paragraph-box h3 {
-    margin-top: 0;
+    position: relative;
+    bottom: 0;
 }

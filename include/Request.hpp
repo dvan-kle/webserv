@@ -1,10 +1,6 @@
 #pragma once
-#include <unistd.h>
-#include <iostream>
-#include <fstream>
-#include <cstring>
-#include <sstream>
-#include <sys/stat.h>
+
+#include "Libaries.hpp"
 
 const std::string HTTP_200 = "200 OK\r\n";
 const std::string HTTP_400 = "400 Bad Request\r\n";
@@ -46,6 +42,7 @@ public:
     void SendResponse(const std::string &requestBody); // Adjusted parameter type
     void GetResponse();
     void PostResponse(const std::string &requestBody); // Adjusted parameter type
+    void DeleteResponse();
     
     void PageNotFound();
     void MethodNotAllowed();
