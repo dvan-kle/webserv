@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delete File</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>Delete Files</h1>
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav>
+        <a href="index.html">GET</a>
+        <a href="upload.html">POST</a>
+        <a href="delete.html">DELETE</a>
+    </nav>
+
+    <main>
+        <div class="delete-container">
+            <h2>Delete a File</h2>
+            <form id="deleteForm" method="post" action="/delete" onsubmit="handleDelete(event)">
+                <label for="filename">Enter Filename to Delete:</label>
+                <input type="text" id="filename" name="filename" required>
+                <button type="submit">Delete File</button>
+            </form>
+            <div id="responseMessage"></div>
+        </div>
+    </main>
+
+    <footer>
+        &copy; 2024 My Website. All rights reserved.
+    </footer>
+
+    <script>
+        function handleDelete(event) {
+            event.preventDefault();
+
+            const filename = document.getElementById('filename').value;
+            const responseMessage = document.getElementById('responseMessage');
+
+            fetch(`/${filename}`, {
+                method: 'DELETE'
+            }).then(response => {
+                if (response.ok) {
+                    responseMessage.textContent = `File "${filename}" deleted successfully.`;
+                } else {
+                    responseMessage.textContent = `Error deleting file "${filename}".`;
+                }
+            }).catch(error => {
+                responseMessage.textContent = `Error: ${error}`;
+            });
+        }
+    </script>
+</body>
+</html>

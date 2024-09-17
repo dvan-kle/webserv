@@ -10,6 +10,8 @@ SRCS := \
 	src/Request.cpp \
 	src/Errors.cpp \
 	src/Post.cpp \
+	src/Delete.cpp \
+	src/CGI.cpp \
 
 OBJS	:= $(SRCS:%.c=objs/%.o)
 OBJS_DIR = objs/
