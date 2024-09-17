@@ -343,7 +343,7 @@ std::vector<ServerConfig> parseConfig(int argc, char* argv[]) {
     // Read the configuration file
     std::ifstream file(config_file);
     if (!file.is_open()) {
-        std::cout << "Cannot open configuration file: " << config_file << std::endl;
+        // std::cout << "Cannot open configuration file: " << config_file << std::endl;
         exit(1);
     }
     std::stringstream buffer;
@@ -357,7 +357,7 @@ std::vector<ServerConfig> parseConfig(int argc, char* argv[]) {
     try {
         json_root = parser.parse();
     } catch (const std::exception& e) {
-        std::cout << "Failed to parse JSON configuration: " << e.what() << std::endl;
+        // std::cout << "Failed to parse JSON configuration: " << e.what() << std::endl;
         exit(1);
     }
 
@@ -366,12 +366,12 @@ std::vector<ServerConfig> parseConfig(int argc, char* argv[]) {
     try {
         parseConfigFromJsonValue(json_root, servers);
     } catch (const std::exception& e) {
-        std::cout << "Failed to parse configuration: " << e.what() << std::endl;
+        // std::cout << "Failed to parse configuration: " << e.what() << std::endl;
         exit(1);
     }
 
     // Display the parsed configuration (for testing)
-    displayConfig(servers);
+    // displayConfig(servers);
 
     return servers;
 }

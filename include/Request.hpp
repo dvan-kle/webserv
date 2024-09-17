@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cstring>
 #include <sstream>
+#include "JsonParser.hpp"
 #include <sys/stat.h>
 
 const std::string HTTP_200 = "200 OK\r\n";
@@ -34,8 +35,10 @@ private:
 
     std::string _headers; // Add this line
 
+    ServerConfig server;
+
 public:
-    Request(int client_fd);
+    Request(int client_fd, ServerConfig server);
     Request(const Request &src) = delete;
     Request &operator=(const Request &src) = delete;
     ~Request();

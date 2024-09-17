@@ -27,7 +27,8 @@ struct ServerConfig {
     std::vector<LocationConfig> locations;
 };
 
-struct JsonValue {
+struct JsonValue
+{
     JsonType type;
     bool bool_value;
     double number_value;

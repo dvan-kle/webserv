@@ -6,7 +6,7 @@
 #include <fstream>
 
 // Constructor
-Request::Request(int client_fd) : _client_fd(client_fd) {
+Request::Request(int client_fd, ServerConfig server) : _client_fd(client_fd), server(server) {
     char buffer[1024];
     std::string headers;
     int bytes_read;
@@ -198,16 +198,16 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
 
 // Parse and handle the HTTP request
 void Request::ParseRequest() {
-    std::cout << _headers << std::endl;
+    // std::cout << _headers << std::endl;
     std::string::size_type pos = _headers.find("\r\n");
 
     if (pos != std::string::npos) {
         std::string requestLine = _headers.substr(0, pos);
         ParseLine(requestLine);
 
-        std::cout << "Method: " << _method << std::endl;
-        std::cout << "URL: " << _url << std::endl;
-        std::cout << "HTTP Version: " << _http_version << std::endl << std::endl;
+        // std::cout << "Method: " << _method << std::endl;
+        // std::cout << "URL: " << _url << std::endl;
+        // std::cout << "HTTP Version: " << _http_version << std::endl << std::endl;
 
         if (isCgiRequest(_url)) {
             executeCGI(WWW_FOLD + _url, _method, _body);
@@ -251,7 +251,7 @@ void Request::GetResponse()
 	if (_url == "/")
 		_url = "/index.html";
 	std::string responsefile  = WWW_FOLD + _url;
-	std::cout << responsefile << std::endl;
+	// std::cout << responsefile << std::endl;
 	
 	std::ifstream ifstr(responsefile, std::ios::binary);
 	if (!ifstr)
@@ -262,7 +262,8 @@ void Request::GetResponse()
 		_response += CON_TYPE_CSS;
 	else
 		_response += CONTYPE_HTML;
-	_response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n\r\n";
+	_response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n";
+    _response += "Server: " + server.server_name  + "\r\n\r\n";
 	_response += htmlContent;
 	
 

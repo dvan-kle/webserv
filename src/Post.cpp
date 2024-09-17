@@ -15,7 +15,7 @@ void Request::PostResponse(const std::string &requestBody) {
             boundary = line.substr(boundaryStart);
             // Remove any trailing whitespace or line breaks
             boundary.erase(boundary.find_last_not_of(" \t\r\n") + 1);
-            std::cout << "Extracted boundary: " << boundary << std::endl;
+            // std::cout << "Extracted boundary: " << boundary << std::endl;
             break;
         }
     }
@@ -57,7 +57,7 @@ void Request::PostResponse(const std::string &requestBody) {
 
         // headers is extracted from the body, starting at startPos and ending at headerEndPos. These are typically metadata about the part, such as content type and file name.
         std::string headers = body.substr(startPos, headerEndPos - startPos);
-        std::cout << "Headers: " << headers << std::endl;
+        // std::cout << "Headers: " << headers << std::endl;
 
 
         // looks for the filename="..." part in the headers
@@ -103,7 +103,7 @@ void Request::PostResponse(const std::string &requestBody) {
         outFile.close();
 
         // log success
-        std::cout << "File uploaded successfully: " << filePath << std::endl;
+        // std::cout << "File uploaded successfully: " << filePath << std::endl;
 
         // moves startPos to the next boundary marker (skipping the current boundary and any trailing \r\n), to process the next file part in the loop
         startPos = nextBoundary + boundaryMarker.length() + 2;
