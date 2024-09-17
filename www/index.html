@@ -3,31 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Website</title>
+    <title>My Website - Home</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <header>
-        <h1>Webserv</h1>
+        <h1>Welcome to Webserv</h1>
     </header>
+
+    <!-- Navigation Bar -->
+    <nav>
+        <a href="index.html">GET</a>
+        <a href="upload.html">POST</a>
+        <a href="delete.html">DELETE</a>
+    </nav>
+
+    <!-- Main content area -->
     <main>
-		<h2>Introduction</h2>
-        <p>Please check out the following functions</p>
-		<div class="paragraph-box">
-			<h3>Upload</h3>
-			<p>On <a href="upload.html">this</a> page you can see how we use a POST request</p>
-		</div>
-		<div class="paragraph-box">
-			<h3>Paragraph Box 2</h3>
-			<p>This is the second paragraph box  Use it to separate different sections of your content.</p>
-		</div>
-		<div class="paragraph-box">
-			<h3>Paragraph Box 3</h3>
-			<p>This is the third paragraph box. Customize it as you like to suit  your needs.</p>
-		</div>
+        <section class="intro">
+            <h2>Introduction</h2>
+            <p>Welcome to Webserv. You can upload and delete files easily using our service.</p>
+        </section>
+        
+        <section class="features">
+            <div class="feature-box">
+                <h3>Upload Files</h3>
+                <p>Go to the <a href="upload.html">upload</a> page to upload files.</p>
+            </div>
+            <div class="feature-box">
+                <h3>Delete Files</h3>
+                <p>Visit the <a href="delete.html">delete</a> page to remove files.</p>
+            </div>
+        </section>
     </main>
+
+    <!-- Footer at the bottom -->
     <footer>
-        &copy; 2024 My Website. All rights reserved. &euro;
+        &copy; 2024 My Website. All rights reserved.
     </footer>
 </body>
 </html>
