@@ -1,5 +1,4 @@
-#ifndef LIBARIES_HPP
-#define LIBARIES_HPP
+#pragma once
 
 #include <string>
 #include <map>
@@ -9,23 +8,14 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <vector>
 #include <unordered_map>
 #include <cctype>
 #include <signal.h>
 #include <sys/wait.h>
-#include <sstream>
-#include <iostream>
-#include <fstream>
 #include <unistd.h>
-#include <iostream>
-#include <fstream>
-#include <cstring>
-#include <sstream>
 #include <sys/stat.h>
-
-#endif
+#include <sys/socket.h>
+#include <sys/epoll.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <cstring>
