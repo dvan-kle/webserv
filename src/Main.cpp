@@ -1,6 +1,14 @@
 #include "../include/JsonParser.hpp"
 #include "../include/Server.hpp"
 
+std::vector<int> ParsePorts(std::vector<ServerConfig> servers) {
+    std::vector<int> ports;
+    for (const auto& server : servers) {
+        ports.push_back(server.listen_port);
+    }
+    return ports;
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) {
         std::cout << "Usage: " + std::string(argv[0]) + " <config_file>" << std::endl;
@@ -9,10 +17,8 @@ int main(int argc, char **argv) {
 
     std::vector<ServerConfig> servers = parseConfig(argc, argv);
 
-    for (const auto& server : servers) {
-        std::cout << server.listen_port;
-        Server host_server(server.listen_port);
-    }
+    std::vector<int> ports = ParsePorts(servers);
+    Server server(ports, servers);
 
     return 0;
 }

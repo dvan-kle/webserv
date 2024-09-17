@@ -2,8 +2,44 @@
 	"servers": [
 	  {
 		"listen_host": "0.0.0.0",
+		"listen_port": 8082,
+		"server_name": "Server1 op poort 8082",
+		"error_pages": {
+		  "404": "/404.html",
+		  "405": "/405.html",
+		  "406": "/406.html"
+		},
+		"client_max_body_size": "4M",
+		"locations": [
+		  {
+			"path": "/",
+			"methods": ["GET", "POST"],
+			"root": "/var/www/html",
+			"index": "index.html",
+			"autoindex": true
+		  },
+		  {
+			"path": "/uploads",
+			"methods": ["POST"],
+			"root": "/var/www/uploads",
+			"upload_path": "/var/www/uploads"
+		  },
+		  {
+			"path": "/redirect",
+			"redirection": "http://example.com",
+			"return_code": 301
+		  },
+		  {
+			"path": "/cgi-bin",
+			"cgi_extension": ".php",
+			"cgi_path": "/usr/bin/php-cgi"
+		  }
+		]
+	  },
+	  {
+		"listen_host": "0.0.0.0",
 		"listen_port": 8080,
-		"server_name": "myserver",
+		"server_name": "Server2 op poort 8080",
 		"error_pages": {
 		  "404": "/404.html",
 		  "405": "/405.html",
@@ -73,4 +109,6 @@
 		]
 	  }
 	]
-  }
+}
+
+

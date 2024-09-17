@@ -1,5 +1,4 @@
 #pragma once
-
 #include "Libaries.hpp"
 
 const std::string HTTP_200 = "200 OK\r\n";
@@ -30,8 +29,10 @@ private:
 
     std::string _headers; // Add this line
 
+    ServerConfig server;
+
 public:
-    Request(int client_fd);
+    Request(int client_fd, ServerConfig server);
     Request(const Request &src) = delete;
     Request &operator=(const Request &src) = delete;
     ~Request();
