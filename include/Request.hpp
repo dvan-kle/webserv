@@ -12,7 +12,7 @@ const std::string CONTYPE_HTML = "Content-Type: text/html\r\n";
 const std::string CON_TYPE_CSS = "Content-Type: text/css\r\n";
 const std::string CONTENT_LENGTH = "Content-Length: ";
 const std::string ERROR_FOLD = "error_pages";
-const std::string WWW_FOLD = "www";
+const std::string WWW_FOLD = "www/";
 
 class Request
 {
@@ -47,8 +47,6 @@ public:
     void PostResponse(const std::string &requestBody); // Adjusted parameter type
     void DeleteResponse();
     
-    void PageNotFound();
-    void MethodNotAllowed();
     void createDir(const std::string &name); // Adjusted parameter type
 
     void executeCGI(std::string path, std::string method, std::string body);
@@ -63,4 +61,7 @@ public:
     void handleUnsupportedContentType();
     void sendHtmlResponse(const std::string &htmlContent);
 
+    void ServeErrorPage(int error_code);
+    LocationConfig* findLocation(const std::string& url);
+    bool isMethodAllowed(LocationConfig* location, const std::string& method);
 };
