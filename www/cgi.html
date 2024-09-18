@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CGI Scripts - Webserv</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>Execute CGI Scripts</h1>
+    </header>
+
+    <!-- Navigation Bar -->
+    <nav>
+        <a href="index.html">GET</a>
+        <a href="upload.html">POST</a>
+        <a href="delete.html">DELETE</a>
+        <a href="cgi.html">CGI</a>
+    </nav>
+
+    <!-- Main content area -->
+    <main>
+        <section class="intro">
+            <h2>Available CGI Scripts</h2>
+            <p>Select a script from the list below and see its output.</p>
+
+            <div class="cgi-scripts">
+                <form action="/cgi-bin/test.py" method="GET">
+                    <button type="submit">Execute test.py</button>
+                </form>
+                <form action="/cgi-bin/test.cgi" method="GET">
+                    <button type="submit">Execute test.cgi</button>
+                </form>
+                <form action="/cgi-bin/post_get_test.cgi" method="GET"></form>
+                    <button type="submit">Execute post_get_test.py</button>
+                </form>
+                <form action="/cgi-bin/timeout.py" method="GET"></form>
+                    <button type="submit">Execute timeout.py</button>
+                </form>
+                <!-- Add more scripts as needed -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        &copy; 2024 My Website. All rights reserved.
+    </footer>
+</body>
+</html>
