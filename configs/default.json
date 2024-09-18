@@ -36,9 +36,11 @@
 					"return_code": 301
 				},
 				{
-					"path": "/cgi-bin",
-					"cgi_extension": ".php",
-					"cgi_path": "/usr/bin/php-cgi"
+                    "path": "/cgi-bin",
+                    "methods": ["GET", "POST"],
+                    "cgi_extension": ".py",
+                    "cgi_path": "/usr/bin/python3",
+					"root": "/cgi-bin"
 				}
 			]
 		},
@@ -78,9 +80,11 @@
 					"return_code": 301
 				},
 				{
-					"path": "/cgi-bin",
-					"cgi_extension": ".php",
-					"cgi_path": "/usr/bin/php-cgi"
+                    "path": "/cgi-bin",
+                    "methods": ["GET", "POST"],
+                    "cgi_extension": ".py",
+                    "cgi_path": "/usr/bin/python3",
+					"root": "/"
 				}
 			]
 		},
@@ -120,9 +124,11 @@
 					"return_code": 301
 				},
 				{
-					"path": "/cgi-bin",
-					"cgi_extension": ".php",
-					"cgi_path": "/usr/bin/php-cgi"
+                    "path": "/cgi-bin",
+                    "methods": ["GET", "POST"],
+                    "cgi_extension": ".py",
+                    "cgi_path": "/usr/bin/python3",
+					"root": "/"
 				}
 			]
 		}

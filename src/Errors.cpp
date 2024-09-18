@@ -55,13 +55,14 @@ void Request::ServeErrorPage(int error_code) {
 }
 
 LocationConfig* Request::findLocation(const std::string& url) {
-    for (auto& loc : server.locations) {
-        if (url.rfind(loc.path, 0) == 0) {  // Check if URL starts with the location path
-            return &loc;
+    for (auto& location : server.locations) {
+        if (url.find(location.path) == 0) {  // Match the path prefix (like /cgi-bin)
+            return &location;
         }
     }
-    return nullptr;
+    return nullptr;  // No matching location found
 }
+
 
 bool Request::isMethodAllowed(LocationConfig* location, const std::string& method) {
     return std::find(location->methods.begin(), location->methods.end(), method) != location->methods.end();
