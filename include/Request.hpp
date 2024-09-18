@@ -55,4 +55,12 @@ public:
     bool isCgiRequest(std::string path);
     
     std::string unchunkRequestBody(const std::string &buffer);
+
+    void handleFormUrlEncoded(const std::string &requestBody);
+    void handlePlainText(const std::string &requestBody);
+    void handleJson(const std::string &requestBody);
+    void handleMultipartFormData(const std::string &requestBody);
+    void handleUnsupportedContentType();
+    void sendHtmlResponse(const std::string &htmlContent);
+
 };
