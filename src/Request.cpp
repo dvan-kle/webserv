@@ -90,18 +90,19 @@ std::string Request::unchunkRequestBody(const std::string &buffer) {
     return body;
 }
 
-// Parse and handle the HTTP request
 void Request::ParseRequest() {
-    // std::cout << _headers << std::endl;
     std::string::size_type pos = _headers.find("\r\n");
 
     if (pos != std::string::npos) {
         std::string requestLine = _headers.substr(0, pos);
         ParseLine(requestLine);
 
-        // std::cout << "Method: " << _method << std::endl;
-        // std::cout << "URL: " << _url << std::endl;
-        // std::cout << "HTTP Version: " << _http_version << std::endl << std::endl;
+        // Check if the method is allowed
+        auto location = findLocation(_url);
+        if (location == nullptr || !isMethodAllowed(location, _method)) {
+            ServeErrorPage(405);  // Method Not Allowed
+            return;
+        }
 
         if (isCgiRequest(_url)) {
             executeCGI(WWW_FOLD + _url, _method, _body);
@@ -110,6 +111,7 @@ void Request::ParseRequest() {
         }
     } else {
         std::cerr << "Invalid HTTP request" << std::endl;
+        ServeErrorPage(400);  // Bad Request
     }
 }
 
@@ -137,36 +139,35 @@ void Request::SendResponse(const std::string &requestBody) {
     } else if (_method == "DELETE") {
         DeleteResponse();
     } else {
-        MethodNotAllowed();
+        ServeErrorPage(404);
     }
 }
 
-void Request::GetResponse()
-{
-	if (_url == "/")
-		_url = "/index.html";
-	std::string responsefile  = WWW_FOLD + _url;
-	// std::cout << responsefile << std::endl;
-	
-	std::ifstream ifstr(responsefile, std::ios::binary);
-	if (!ifstr)
-		return (PageNotFound());
-	std::string htmlContent((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
-	_response += _http_version + " " + HTTP_200;
-	if (_url.find(".css") != std::string::npos)
-		_response += CON_TYPE_CSS;
-	else
-		_response += CONTYPE_HTML;
-	_response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n";
-    _response += "Server: " + server.server_name  + "\r\n\r\n";
-	_response += htmlContent;
-	
+void Request::GetResponse() {
+    if (_url == "/")
+        _url = "/index.html";
+    std::string responsefile  = WWW_FOLD + _url;
 
-	ssize_t bytes_written = write(_client_fd, _response.c_str(), strlen(_response.c_str()));
-	if (bytes_written == -1)
-	{
-		std::cerr << "Error: write failed" << std::endl;
-		close(_client_fd);
-		exit(EXIT_FAILURE);
-	}
+    std::ifstream ifstr(responsefile, std::ios::binary);
+    if (!ifstr) {
+        ServeErrorPage(404);  // File Not Found
+        return;
+    }
+
+    std::string htmlContent((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
+    _response += _http_version + " " + HTTP_200;
+    if (_url.find(".css") != std::string::npos)
+        _response += CON_TYPE_CSS;
+    else
+        _response += CONTYPE_HTML;
+    _response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n";
+    _response += "Server: " + server.server_name  + "\r\n\r\n";
+    _response += htmlContent;
+
+    ssize_t bytes_written = write(_client_fd, _response.c_str(), strlen(_response.c_str()));
+    if (bytes_written == -1) {
+        std::cerr << "Error: write failed" << std::endl;
+        close(_client_fd);
+        exit(EXIT_FAILURE);
+    }
 }

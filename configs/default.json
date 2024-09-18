@@ -5,15 +5,21 @@
 			"listen_port": 8001,
 			"server_name": "Server1 op poort 8001",
 			"error_pages": {
-		  		"404": "/404.html",
-		  		"405": "/405.html",
-		  		"406": "/406.html"
+				"404": "error_pages/error_404.html",
+				"403": "error_pages/error_403.html",
+				"405": "error_pages/error_405.html",
+				"500": "error_pages/error_500.html",
+				"502": "error_pages/error_502.html",
+				"503": "error_pages/error_503.html",
+				"400": "error_pages/error_400.html",
+				"401": "error_pages/error_401.html",
+				"504": "error_pages/error_504.html"
 			},
 			"client_max_body_size": "1M",
 			"locations": [
 				{
 					"path": "/",
-					"methods": ["GET", "POST"],
+					"methods": ["GET", "POST", "DELETE"],
 					"root": "/var/www/html",
 					"index": "index.html",
 					"autoindex": true
@@ -41,15 +47,21 @@
 			"listen_port": 8002,
 			"server_name": "Server2 op poort 8002",
 			"error_pages": {
-				"404": "/404.html",
-				"405": "/405.html",
-				"406": "/406.html"
+				"404": "error_pages/error_404.html",
+				"403": "error_pages/error_403.html",
+				"405": "error_pages/error_405.html",
+				"500": "error_pages/error_500.html",
+				"502": "error_pages/error_502.html",
+				"503": "error_pages/error_503.html",
+				"400": "error_pages/error_400.html",
+				"401": "error_pages/error_401.html",
+				"504": "error_pages/error_504.html"
 			},
 			"client_max_body_size": "1M",
 			"locations": [
 				{
 					"path": "/",
-					"methods": ["GET", "POST"],
+					"methods": ["GET", "POST", "DELETE"],
 					"root": "/var/www/html",
 					"index": "index.html",
 					"autoindex": true
@@ -77,15 +89,21 @@
 			"listen_port": 8003,
 			"server_name": "Server2 op poort 8003",
 			"error_pages": {
-				"404": "/404.html",
-				"405": "/405.html",
-				"406": "/406.html"
+				"404": "error_pages/error_404.html",
+				"403": "error_pages/error_403.html",
+				"405": "error_pages/error_405.html",
+				"500": "error_pages/error_500.html",
+				"502": "error_pages/error_502.html",
+				"503": "error_pages/error_503.html",
+				"400": "error_pages/error_400.html",
+				"401": "error_pages/error_401.html",
+				"504": "error_pages/error_504.html"
 			},
 			"client_max_body_size": "1M",
 			"locations": [
 				{
 					"path": "/",
-					"methods": ["GET", "POST"],
+					"methods": ["GET", "POST", "DELETE"],
 					"root": "/var/www/html",
 					"index": "index.html",
 					"autoindex": true
