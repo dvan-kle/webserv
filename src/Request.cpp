@@ -105,7 +105,6 @@ void Request::ParseRequest() {
             ServeErrorPage(405);  // Method Not Allowed
             return;
         }
-
         if (isCgiRequest(_url)) {
             executeCGI(WWW_FOLD + _url, _method, _body);
         } else {
@@ -159,7 +158,19 @@ void Request::GetResponse()
         return;
     }
 	std::string htmlContent((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
-	_response += _http_version + " " + HTTP_200;
+	responseHeader(htmlContent, HTTP_200);
+	ssize_t bytes_written = write(_client_fd, _response.c_str(), strlen(_response.c_str()));
+	if (bytes_written == -1)
+	{
+		std::cerr << "Error: write failed" << std::endl;
+		close(_client_fd);
+		exit(EXIT_FAILURE);
+	}
+}
+
+void Request::responseHeader(std::string htmlContent, const std::string status_code)
+{
+    _response += _http_version + " " + status_code;
 	if (_url.find(".css") != std::string::npos)
 		_response += CON_TYPE_CSS;
 	else
@@ -168,15 +179,6 @@ void Request::GetResponse()
     _response += "Date: " + getCurrentTimeHttpFormat() + "\r\n";
     _response += "Server: " + _config.server_name  + "\r\n\r\n";
 	_response += htmlContent;
-	
-
-	ssize_t bytes_written = write(_client_fd, _response.c_str(), strlen(_response.c_str()));
-	if (bytes_written == -1)
-	{
-		std::cerr << "Error: write failed" << std::endl;
-		close(_client_fd);
-		exit(EXIT_FAILURE);
-	}
 }
 
 std::string Request::getCurrentTimeHttpFormat()

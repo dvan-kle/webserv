@@ -45,12 +45,12 @@ Server::Server(const std::vector<int> &ports, const std::vector<ServerConfig> &s
 		CreateSocket(port);
 	}
 	EpollCreate();
-	std::cout << "Server is listening with address " << inet_ntoa(_address.sin_addr) << " on ports: " << std::endl << std::endl;
+	std::cout << YELLOW << "Server is listening with address " << inet_ntoa(_address.sin_addr) << " on ports: " << GREEN << std::endl << std::endl;
 	for (int port : ports)
 	{
 		std::cout <<  port << std::endl;
 	}
-	std::cout << std::endl << std::endl;
+	std::cout << RESET << std::endl << std::endl;
 	EpollWait(servers);
 }
 
