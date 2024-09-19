@@ -10,11 +10,31 @@ bool Request::isCgiRequest(std::string path) {
     return false;
 }
 
-// Execute a CGI script
 void Request::executeCGI(std::string path, std::string method, std::string body) {
     try {
-        char *const envp[] = {NULL};  // Environment variables
-        char *const cgiArgv[] = {(char *)path.c_str(), NULL};  // Pass CGI script path as argument
+        // Set up environment variables for CGI
+        std::string contentLength = std::to_string(body.length());
+        std::string requestMethod = method;
+        std::string scriptName = path;
+        std::string queryString = "";
+
+        std::cout << path << "\n\n";
+
+        // Handle the query string for GET requests
+        size_t queryPos = _url.find("?");
+        if (queryPos != std::string::npos) {
+            queryString = _url.substr(queryPos + 1);
+        }
+
+        char *const envp[] = {
+            (char *)("REQUEST_METHOD=" + requestMethod).c_str(),
+            (char *)("CONTENT_LENGTH=" + contentLength).c_str(),
+            (char *)("SCRIPT_NAME=" + scriptName).c_str(),
+            (char *)("QUERY_STRING=" + queryString).c_str(),
+            NULL
+        };
+
+        char *const cgiArgv[] = {(char *)path.c_str(), NULL};
 
         int pipeFd[2];
         if (pipe(pipeFd) == -1) {
@@ -34,8 +54,10 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
             dup2(pipeFd[1], STDOUT_FILENO);  // Redirect output to pipe
             close(pipeFd[1]);
 
-            if (!body.empty()) {
-                write(STDIN_FILENO, body.c_str(), body.length());  // Pass the unchunked body to CGI via stdin
+            // If the method is POST, write the body to stdin for the CGI script
+            if (method == "POST") {
+                dup2(STDIN_FILENO, pipeFd[1]);
+                write(STDIN_FILENO, body.c_str(), body.length());
             }
 
             alarm(2);  // Kill process if it exceeds 2 seconds
@@ -55,7 +77,7 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
         } else {
             close(pipeFd[1]);
 
-            // Wait for CGI execution and timeout handling
+            // Wait for CGI execution and handle timeouts
             time_t startTime = time(nullptr);
             int status;
             pid_t result;
