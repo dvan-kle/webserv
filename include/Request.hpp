@@ -70,4 +70,6 @@ public:
     void ServeErrorPage(int error_code);
     LocationConfig* findLocation(const std::string& url);
     bool isMethodAllowed(LocationConfig* location, const std::string& method);
+
+    std::string generateDirectoryListing(const std::string& directoryPath, const std::string& host, int port);
 };
