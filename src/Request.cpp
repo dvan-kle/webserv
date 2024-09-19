@@ -144,29 +144,96 @@ void Request::SendResponse(const std::string &requestBody) {
     }
 }
 
-
 void Request::GetResponse()
 {
-	if (_url == "/")
-		_url = "/index.html";
-	std::string responsefile  = WWW_FOLD + _url;
-	// std::cout << responsefile << std::endl;
-	
-	std::ifstream ifstr(responsefile, std::ios::binary);
-	 if (!ifstr) {
+    std::string filePath = WWW_FOLD + _url;
+
+    // Check if it's a directory
+    struct stat pathStat;
+    stat(filePath.c_str(), &pathStat);
+
+    if (S_ISDIR(pathStat.st_mode)) {
+        // Directory requested; check for autoindex
+        auto location = findLocation(_url);
+        if (location != nullptr) {
+            // Check if an index file is specified and exists in the directory
+            std::string indexFilePath = filePath + "/" + location->index;
+            struct stat indexStat;
+            if (stat(indexFilePath.c_str(), &indexStat) == 0 && S_ISREG(indexStat.st_mode)) {
+                // Index file exists, serve the index file
+                filePath = indexFilePath;
+            } else if (location->autoindex) {
+                // Index file doesn't exist, and autoindex is enabled, generate and serve directory listing
+                std::string host = _config.listen_host;  // Get host from server config
+                int port = _config.listen_port;          // Get port from server config
+
+                // Generate and serve directory listing with the full URL
+                std::string dirListing = generateDirectoryListing(filePath, host, port);
+                responseHeader(dirListing, HTTP_200);  // Use HTTP_200 or relevant status code
+                ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
+                if (bytes_written == -1) {
+                    std::cerr << "Error: write failed" << std::endl;
+                    close(_client_fd);
+                    exit(EXIT_FAILURE);
+                }
+                return;
+            } else {
+                // Autoindex is disabled and no index file, serve error
+                ServeErrorPage(403);  // Forbidden (no index file and no autoindex)
+                return;
+            }
+        }
+    }
+
+    // Serve the requested file (or index file in the case of a directory)
+    std::ifstream ifstr(filePath, std::ios::binary);
+    if (!ifstr) {
         ServeErrorPage(404);  // File Not Found
         return;
     }
-	std::string htmlContent((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
-	responseHeader(htmlContent, HTTP_200);
-	ssize_t bytes_written = write(_client_fd, _response.c_str(), strlen(_response.c_str()));
-	if (bytes_written == -1)
-	{
-		std::cerr << "Error: write failed" << std::endl;
-		close(_client_fd);
-		exit(EXIT_FAILURE);
-	}
+
+    std::string htmlContent((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
+    responseHeader(htmlContent, HTTP_200);
+    ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
+    if (bytes_written == -1) {
+        std::cerr << "Error: write failed" << std::endl;
+        close(_client_fd);
+        exit(EXIT_FAILURE);
+    }
 }
+
+std::string Request::generateDirectoryListing(const std::string& directoryPath, const std::string& host, int port) {
+    std::ostringstream html;
+    html << "<html><head><title>Directory Listing</title></head><body>";
+    html << "<h1>Index of " << _url << "</h1>";
+    html << "<ul>";
+
+    DIR* dir = opendir(directoryPath.c_str());
+    if (dir == nullptr) {
+        return "<html><body>Error: Unable to open directory</body></html>";
+    }
+
+    struct dirent* entry;
+    while ((entry = readdir(dir)) != nullptr) {
+        std::string entryName = entry->d_name;
+        if (entryName == ".") {
+            continue;  // Skip current directory
+        }
+
+        // Construct the full URL with host and port
+        std::string entryUrl = "http://" + host + ":" + std::to_string(port) + _url + (entryName == ".." ? "/.." : "/" + entryName);
+
+        // Generate correct full links with hostname and port
+        html << "<li><a href=\"" << entryUrl << "\">" << entryName << "</a></li>";
+    }
+
+    closedir(dir);
+    html << "</ul></body></html>";
+
+    return html.str();
+}
+
+
 
 void Request::responseHeader(std::string htmlContent, const std::string status_code)
 {
