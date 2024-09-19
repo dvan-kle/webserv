@@ -36,11 +36,11 @@
 					"return_code": 301
 				},
 				{
-                    "path": "/cgi-bin",
+                    "path": "cgi-bin",
                     "methods": ["GET", "POST"],
                     "cgi_extension": ".py",
                     "cgi_path": "/usr/bin/python3",
-					"root": "/cgi-bin"
+					"root": "cgi-bin"
 				}
 			]
 		}
