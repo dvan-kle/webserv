@@ -154,8 +154,10 @@ void Request::GetResponse()
 	// std::cout << responsefile << std::endl;
 	
 	std::ifstream ifstr(responsefile, std::ios::binary);
-	if (!ifstr)
-		return (PageNotFound());
+	 if (!ifstr) {
+        ServeErrorPage(404);  // File Not Found
+        return;
+    }
 	std::string htmlContent((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
 	_response += _http_version + " " + HTTP_200;
 	if (_url.find(".css") != std::string::npos)

@@ -2,8 +2,8 @@
 
 void Request::ServeErrorPage(int error_code) {
     // Check if the error code has a corresponding page in the configuration
-    auto it = server.error_pages.find(error_code);
-    if (it != server.error_pages.end()) {
+    auto it = _config.error_pages.find(error_code);
+    if (it != _config.error_pages.end()) {
         std::string error_page_path = WWW_FOLD + it->second; // Use the exact path as defined in JSON config
         std::ifstream ifstr(error_page_path, std::ios::binary);
         
@@ -13,7 +13,7 @@ void Request::ServeErrorPage(int error_code) {
             _response += _http_version + " " + std::to_string(error_code) + " Error\r\n";
             _response += CONTYPE_HTML;
             _response += CONTENT_LENGTH + std::to_string(error_content.size()) + "\r\n";
-            _response += "Server: " + server.server_name + "\r\n\r\n";
+            _response += "Server: " + _config.server_name + "\r\n\r\n";
             _response += error_content;
 
             ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
@@ -45,7 +45,7 @@ void Request::ServeErrorPage(int error_code) {
     _response += _http_version + " " + std::to_string(error_code) + " Error\r\n";
     _response += CONTYPE_HTML;
     _response += CONTENT_LENGTH + std::to_string(fallback_content.size()) + "\r\n";
-    _response += "Server: " + server.server_name + "\r\n\r\n";
+    _response += "Server: " + _config.server_name + "\r\n\r\n";
     _response += fallback_content;
 
     ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
@@ -55,7 +55,7 @@ void Request::ServeErrorPage(int error_code) {
 }
 
 LocationConfig* Request::findLocation(const std::string& url) {
-    for (auto& location : server.locations) {
+    for (auto& location : _config.locations) {
         if (url.find(location.path) == 0) {  // Match the path prefix (like /cgi-bin)
             return &location;
         }
