@@ -177,7 +177,7 @@ void Request::handleMultipartFormData(const std::string &requestBody) {
     }
 
     // Send a success response to the client
-    std::string htmlContent = "<html><body><h1>File uploaded successfully!</h1></body></html>";
+    std::string htmlContent = "<html><body><h1>File uploaded successfully!</h1><p>Back to <a href=index.html> Home </a></p></body></html>";
     sendHtmlResponse(htmlContent);
 }
 
@@ -188,7 +188,8 @@ void Request::handleUnsupportedContentType() {
 }
 
 // Generic function to send HTML response
-void Request::sendHtmlResponse(const std::string &htmlContent) {
+void Request::sendHtmlResponse(const std::string &htmlContent)
+{
     _response += _http_version + " " + HTTP_200 + CONTYPE_HTML;
     _response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n\r\n";
     _response += htmlContent;

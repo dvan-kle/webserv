@@ -58,7 +58,7 @@ LocationConfig* Request::findLocation(const std::string& url) {
     for (auto& location : _config.locations) {
         if (url.find(location.path) == 0) {  // Match the path prefix (like /cgi-bin)
             return &location;
-        }
+        } 
     }
     return nullptr;  // No matching location found
 }

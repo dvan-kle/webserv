@@ -61,3 +61,4 @@ class JsonParser {
 };
 
 std::vector<ServerConfig> parseConfig(int argc, char* argv[]);
+std::vector<int> ParsePorts(std::vector<ServerConfig> servers);

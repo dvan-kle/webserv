@@ -3,7 +3,7 @@
 		{
 			"listen_host": "0.0.0.0",
 			"listen_port": 8001,
-			"server_name": "Server1 op poort 8001",
+			"server_name": "myserver",
 			"error_pages": {
 				"404": "error_pages/error_404.html",
 				"403": "error_pages/error_403.html",
@@ -41,94 +41,6 @@
                     "cgi_extension": ".py",
                     "cgi_path": "/usr/bin/python3",
 					"root": "/cgi-bin"
-				}
-			]
-		},
-		{
-			"listen_host": "0.0.0.0",
-			"listen_port": 8002,
-			"server_name": "Server2 op poort 8002",
-			"error_pages": {
-				"404": "error_pages/error_404.html",
-				"403": "error_pages/error_403.html",
-				"405": "error_pages/error_405.html",
-				"500": "error_pages/error_500.html",
-				"502": "error_pages/error_502.html",
-				"503": "error_pages/error_503.html",
-				"400": "error_pages/error_400.html",
-				"401": "error_pages/error_401.html",
-				"504": "error_pages/error_504.html"
-			},
-			"client_max_body_size": "1M",
-			"locations": [
-				{
-					"path": "/",
-					"methods": ["GET", "POST", "DELETE"],
-					"root": "/var/www/html",
-					"index": "index.html",
-					"autoindex": true
-		  		},
-				{
-					"path": "/uploads",
-					"methods": ["POST"],
-					"root": "/var/www/uploads",
-					"upload_path": "/var/www/uploads"
-				},
-				{
-					"path": "/redirect",
-					"redirection": "http://example.com",
-					"return_code": 301
-				},
-				{
-                    "path": "/cgi-bin",
-                    "methods": ["GET", "POST"],
-                    "cgi_extension": ".py",
-                    "cgi_path": "/usr/bin/python3",
-					"root": "/"
-				}
-			]
-		},
-		{
-			"listen_host": "0.0.0.0",
-			"listen_port": 8003,
-			"server_name": "Server2 op poort 8003",
-			"error_pages": {
-				"404": "error_pages/error_404.html",
-				"403": "error_pages/error_403.html",
-				"405": "error_pages/error_405.html",
-				"500": "error_pages/error_500.html",
-				"502": "error_pages/error_502.html",
-				"503": "error_pages/error_503.html",
-				"400": "error_pages/error_400.html",
-				"401": "error_pages/error_401.html",
-				"504": "error_pages/error_504.html"
-			},
-			"client_max_body_size": "1M",
-			"locations": [
-				{
-					"path": "/",
-					"methods": ["GET", "POST", "DELETE"],
-					"root": "/var/www/html",
-					"index": "index.html",
-					"autoindex": true
-				},
-				{
-					"path": "/uploads",
-					"methods": ["POST"],
-					"root": "/var/www/uploads",
-					"upload_path": "/var/www/uploads"
-				},
-				{
-					"path": "/redirect",
-					"redirection": "http://example.com",
-					"return_code": 301
-				},
-				{
-                    "path": "/cgi-bin",
-                    "methods": ["GET", "POST"],
-                    "cgi_extension": ".py",
-                    "cgi_path": "/usr/bin/python3",
-					"root": "/"
 				}
 			]
 		}

@@ -375,3 +375,11 @@ std::vector<ServerConfig> parseConfig(int argc, char* argv[]) {
 
     return servers;
 }
+
+std::vector<int> ParsePorts(std::vector<ServerConfig> servers) {
+    std::vector<int> ports;
+    for (const auto& server : servers) {
+        ports.push_back(server.listen_port);
+    }
+    return ports;
+}

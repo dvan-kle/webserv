@@ -6,6 +6,7 @@
 
 const std::string HTTP_200 = "200 OK\r\n";
 const std::string HTTP_400 = "400 Bad Request\r\n";
+const std::string HTTP_403 = "403 Forbidden\r\n";
 const std::string HTTP_404 = "404 Not Found\r\n";
 const std::string HTTP_405 = "405 Method Not Allowed\r\n";
 const std::string HTTP_500 = "500 Internal Server Error\r\n";
@@ -29,6 +30,7 @@ private:
     std::string _response;
 
     std::string _body;
+    ssize_t     _max_body_size;
 
     std::string _headers; // Add this line
 
@@ -53,9 +55,11 @@ public:
     void executeCGI(std::string path, std::string method, std::string body);
     bool isCgiRequest(std::string path);
     
+    void responseHeader(std::string htmlContent, const std::string status_code);
     std::string unchunkRequestBody(const std::string &buffer);
     std::string getCurrentTimeHttpFormat();
 
+    ssize_t convertMaxBodySize(const std::string &input);
     void handleFormUrlEncoded(const std::string &requestBody);
     void handlePlainText(const std::string &requestBody);
     void handleJson(const std::string &requestBody);
