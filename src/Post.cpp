@@ -1,9 +1,56 @@
 #include "../include/Request.hpp"
 
+size_t parseBodySize(const std::string& size_str) {
+    size_t multiplier = 1;
+    std::string number_part;
+    
+    // Get the numeric part
+    for (char c : size_str) {
+        if (std::isdigit(c)) {
+            number_part += c;
+        } else {
+            break;
+        }
+    }
+
+    // Parse the numeric part
+    size_t body_size = std::stoull(number_part);
+
+    // Determine the multiplier (K, M, G)
+    if (size_str.find("K") != std::string::npos) {
+        multiplier = 1024;  // Kilobytes
+    } else if (size_str.find("M") != std::string::npos) {
+        multiplier = 1024 * 1024;  // Megabytes
+    } else if (size_str.find("G") != std::string::npos) {
+        multiplier = 1024 * 1024 * 1024;  // Gigabytes
+    }
+
+    return body_size * multiplier;
+}
+
 void Request::PostResponse(const std::string &requestBody) {
     std::string contentType;
     std::string line;
     std::istringstream headerStream(_headers);
+
+    // Convert the max body size from config
+    size_t maxBodySize = parseBodySize(_config.client_max_body_size);
+
+    // Check Content-Length header
+    size_t contentLength = 0;
+    size_t contentLengthPos = _headers.find("Content-Length:");
+    if (contentLengthPos != std::string::npos) {
+        size_t contentLengthEnd = _headers.find("\r\n", contentLengthPos);
+        std::string contentLengthStr = _headers.substr(contentLengthPos + 15, contentLengthEnd - (contentLengthPos + 15));
+        contentLength = std::stoull(contentLengthStr);
+    }
+
+    // Check if body size exceeds the limit set in the config
+    if (contentLength > maxBodySize) {
+        std::cerr << "Request body too large: " << contentLength << " bytes (Max allowed: " << maxBodySize << " bytes)" << std::endl;
+        ServeErrorPage(413);
+        return;
+    }
 
     // Extract Content-Type from headers
     while (std::getline(headerStream, line) && line != "\r") {
