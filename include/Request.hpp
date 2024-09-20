@@ -72,4 +72,6 @@ public:
     bool isMethodAllowed(LocationConfig* location, const std::string& method);
 
     std::string generateDirectoryListing(const std::string& directoryPath, const std::string& host, int port);
+
+    void sendRedirectResponse(const std::string &redirection_url, int return_code);
 };

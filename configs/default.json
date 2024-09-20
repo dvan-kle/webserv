@@ -32,9 +32,10 @@
 				},
 				{
 					"path": "/redirect",
-					"redirection": "http://example.com",
+					"methods": ["GET", "HEAD"],
+					"redirection": "http://nu.nl",
 					"return_code": 301
-				},
+				},				
 				{
                     "path": "/cgi-bin",
                     "methods": ["GET", "POST"],
