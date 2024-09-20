@@ -1,4 +1,5 @@
 #include "../include/Request.hpp"
+#include "../include/WriteClient.hpp"
 
 // Check if request is a CGI request
 bool Request::isCgiRequest(std::string path) {
@@ -113,7 +114,7 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
 
             // Send the CGI output as the HTTP response
             std::string responseString = _http_version + " 200 OK\r\nContent-Type: text/html\r\n\r\n" + response;
-            write(_client_fd, responseString.c_str(), responseString.size());
+            WriteClient::safeWriteToClient(_client_fd, responseString);
         }
     } catch (const std::runtime_error &e) {
         std::cerr << "Error: " << e.what() << std::endl;

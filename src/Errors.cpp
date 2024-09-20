@@ -1,4 +1,5 @@
 #include "../include/Request.hpp"
+#include "../include/WriteClient.hpp"
 
 void Request::ServeErrorPage(int error_code) {
     // Check if the error code has a corresponding page in the configuration
@@ -48,33 +49,5 @@ void Request::ServeErrorPage(int error_code) {
     _response += "Server: " + _config.server_name + "\r\n\r\n";
     _response += fallback_content;
 
-    ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
-    if (bytes_written == -1) {
-        std::cerr << "Error: write failed" << std::endl;
-    }
-}
-
-LocationConfig* Request::findLocation(const std::string& url) {
-    LocationConfig* best_match = nullptr;
-    size_t best_match_length = 0;
-
-    for (auto& location : _config.locations) {
-        if (url.find(location.path) == 0) {  // Match the path prefix
-            size_t path_length = location.path.length();
-            if (path_length > best_match_length) {
-                best_match = &location;
-                best_match_length = path_length;
-            }
-        }
-    }
-    return best_match;  // Return the best matching location
-}
-
-
-
-bool Request::isMethodAllowed(LocationConfig* location, const std::string& method) {
-    if (location->methods.empty()) {
-        return true;  // Allow all methods if none are specified
-    }
-    return std::find(location->methods.begin(), location->methods.end(), method) != location->methods.end();
+    WriteClient::safeWriteToClient(_client_fd, _response);
 }

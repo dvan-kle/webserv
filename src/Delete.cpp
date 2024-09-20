@@ -1,4 +1,5 @@
 #include "../include/Request.hpp"
+#include "../include/WriteClient.hpp"
 
 void Request::DeleteResponse() {
     // build the file path
@@ -20,11 +21,5 @@ void Request::DeleteResponse() {
         _response += errorMessage;
     }
 
-    // send the response back to the client
-    ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
-    if (bytes_written == -1) {
-        std::cerr << "Error: write failed" << std::endl;
-        close(_client_fd);
-        exit(EXIT_FAILURE);
-    }
+    WriteClient::safeWriteToClient(_client_fd, _response);
 }
