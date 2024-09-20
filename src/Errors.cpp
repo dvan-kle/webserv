@@ -55,15 +55,26 @@ void Request::ServeErrorPage(int error_code) {
 }
 
 LocationConfig* Request::findLocation(const std::string& url) {
+    LocationConfig* best_match = nullptr;
+    size_t best_match_length = 0;
+
     for (auto& location : _config.locations) {
-        if (url.find(location.path) == 0) {  // Match the path prefix (like /cgi-bin)
-            return &location;
-        } 
+        if (url.find(location.path) == 0) {  // Match the path prefix
+            size_t path_length = location.path.length();
+            if (path_length > best_match_length) {
+                best_match = &location;
+                best_match_length = path_length;
+            }
+        }
     }
-    return nullptr;  // No matching location found
+    return best_match;  // Return the best matching location
 }
 
 
+
 bool Request::isMethodAllowed(LocationConfig* location, const std::string& method) {
+    if (location->methods.empty()) {
+        return true;  // Allow all methods if none are specified
+    }
     return std::find(location->methods.begin(), location->methods.end(), method) != location->methods.end();
 }

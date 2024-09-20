@@ -99,12 +99,27 @@ void Request::ParseRequest() {
         std::string requestLine = _headers.substr(0, pos);
         ParseLine(requestLine);
 
-        // Check if the method is allowed
-        auto location = findLocation(_url);
-        if (location == nullptr || !isMethodAllowed(location, _method)) {
-            ServeErrorPage(405);  // Method Not Allowed
+    auto location = findLocation(_url);
+    if (location == nullptr || !isMethodAllowed(location, _method)) {
+        ServeErrorPage(405);  // Method Not Allowed
+        return;
+    }
+
+    // Debugging output
+    std::cout << "Matched location path: " << location->path << std::endl;
+    std::cout << "Allowed methods: ";
+    for (const auto& m : location->methods) {
+        std::cout << m << " ";
+    }
+    std::cout << std::endl;
+    std::cout << "Redirection URL: " << location->redirection << std::endl;
+
+        // Check if the location has a redirection
+        if (!location->redirection.empty()) {
+            sendRedirectResponse(location->redirection, location->return_code);
             return;
         }
+
         if (isCgiRequest(_url)) {
             executeCGI(WWW_FOLD + _url, _method, _body);
         } else {
@@ -113,6 +128,42 @@ void Request::ParseRequest() {
     } else {
         std::cerr << "Invalid HTTP request" << std::endl;
         ServeErrorPage(400);  // Bad Request
+    }
+}
+
+void Request::sendRedirectResponse(const std::string& redirection_url, int return_code) {
+    // Map return codes to status messages
+    std::string status_line;
+    switch (return_code) {
+        case 301:
+            status_line = "301 Moved Permanently";
+            break;
+        case 302:
+            status_line = "302 Found";
+            break;
+        case 307:
+            status_line = "307 Temporary Redirect";
+            break;
+        case 308:
+            status_line = "308 Permanent Redirect";
+            break;
+        default:
+            // Default to 302 Found if return_code is unrecognized
+            status_line = std::to_string(return_code) + " Redirect";
+            break;
+    }
+
+    // Build the HTTP response
+    _response = _http_version + " " + status_line + "\r\n";
+    _response += "Location: " + redirection_url + "\r\n";
+    _response += "Content-Length: 0\r\n";
+    _response += "Server: " + _config.server_name + "\r\n";
+    _response += "\r\n";
+
+    // Send the response back to the client
+    ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
+    if (bytes_written == -1) {
+        std::cerr << "Error: write failed" << std::endl;
     }
 }
 
@@ -133,16 +184,17 @@ void Request::ParseLine(std::string line) {
 }
 
 void Request::SendResponse(const std::string &requestBody) {
-    if (_method == "GET") {
+    if (_method == "GET" || _method == "HEAD") {
         GetResponse();
     } else if (_method == "POST") {
         PostResponse(requestBody);
     } else if (_method == "DELETE") {
         DeleteResponse();
     } else {
-        ServeErrorPage(404);
+        ServeErrorPage(405);  // Method Not Allowed
     }
 }
+
 
 void Request::GetResponse()
 {
@@ -193,7 +245,19 @@ void Request::GetResponse()
     }
 
     std::string htmlContent((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
+
     responseHeader(htmlContent, HTTP_200);
+
+    // If it's a HEAD request, do not include the body
+    if (_method == "HEAD") {
+        // Remove the body from the response
+        _response = _response.substr(0, _response.find("\r\n\r\n") + 4);
+    } else {
+        // Append the body for GET requests
+        _response += htmlContent;
+    }
+
+    // Send the response
     ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
     if (bytes_written == -1) {
         std::cerr << "Error: write failed" << std::endl;
