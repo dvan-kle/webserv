@@ -1,51 +1,26 @@
 #include "../include/Request.hpp"
 #include "../include/JsonParser.hpp"
+#include "../include/Redirect.hpp"
+#include "../include/AutoIndex.hpp"
+#include "../include/HeaderParser.hpp"
+#include "../include/BodyParser.hpp"
+#include "../include/WriteClient.hpp"
 
-// Constructor
 Request::Request(int client_fd, ServerConfig server) : _client_fd(client_fd), _config(server)
 {
-    char buffer[1024];
-    std::string headers;
-    int bytes_read;
-    size_t total_bytes_read = 0;
-
-    // Read headers from client
-    while (true) {
-        bytes_read = read(_client_fd, buffer, sizeof(buffer));
-        if (bytes_read == -1) {
-            std::cerr << "Error: read failed" << std::endl;
-            close(_client_fd);
-            exit(EXIT_FAILURE);
-        } else if (bytes_read == 0) {
-            // Client closed the connection
-            break;
-        }
-        headers.append(buffer, bytes_read);
-        total_bytes_read += bytes_read;
-
-        // Check if we've reached the end of headers
-        size_t pos = headers.find("\r\n\r\n");
-        if (pos != std::string::npos) {
-            _headers = headers.substr(0, pos + 4);  // Save headers
-            _body = headers.substr(pos + 4);        // Remaining body after headers
-            break;
-        }
-    }
+    // Use the HeaderParser to read headers and the initial body content
+    std::pair<std::string, std::string> headersAndBody = HeaderParser::readHeaders(_client_fd);
+    _headers = headersAndBody.first;
+    _body = headersAndBody.second;
 
     // Handle transfer encoding or content length
-    if (_headers.find("Transfer-Encoding: chunked") != std::string::npos) {
-        _body = unchunkRequestBody(_body);  // Handle chunked body
+    if (HeaderParser::isChunkedEncoding(_headers)) {
+        _body = BodyParser::unchunkRequestBody(_body);  // Handle chunked body
     } else {
-        // Handle content-length (for POST data)
-        size_t content_length = 0;
-        size_t cl_pos = _headers.find("Content-Length:");
-        if (cl_pos != std::string::npos) {
-            size_t cl_end = _headers.find("\r\n", cl_pos);
-            std::string cl_str = _headers.substr(cl_pos + 15, cl_end - (cl_pos + 15));
-            content_length = std::stoi(cl_str);
-        }
+        size_t content_length = HeaderParser::getContentLength(_headers);
+        char buffer[1024];
+        int bytes_read;
 
-        // Read the rest of the body based on Content-Length
         while (_body.size() < content_length) {
             bytes_read = read(_client_fd, buffer, sizeof(buffer));
             if (bytes_read == -1) {
@@ -65,33 +40,6 @@ Request::~Request() {
     close(_client_fd);
 }
 
-// Handle chunked transfer encoding
-std::string Request::unchunkRequestBody(const std::string &buffer) {
-    std::istringstream stream(buffer);
-    std::string line;
-    std::string body;
-
-    while (std::getline(stream, line)) {
-        int chunkSize;
-        std::stringstream hexStream(line);
-        hexStream >> std::hex >> chunkSize;
-        if (chunkSize == 0) {
-            break;  // End of chunked data
-        }
-
-        // Read chunk data
-        char *chunkData = new char[chunkSize + 1];
-        stream.read(chunkData, chunkSize);
-        chunkData[chunkSize] = '\0';
-        body += std::string(chunkData);
-        delete[] chunkData;
-
-        // Skip the CRLF after the chunk
-        std::getline(stream, line);
-    }
-    return body;
-}
-
 void Request::ParseRequest() {
     std::string::size_type pos = _headers.find("\r\n");
 
@@ -99,24 +47,14 @@ void Request::ParseRequest() {
         std::string requestLine = _headers.substr(0, pos);
         ParseLine(requestLine);
 
-    auto location = findLocation(_url);
-    if (location == nullptr || !isMethodAllowed(location, _method)) {
-        ServeErrorPage(405);  // Method Not Allowed
-        return;
-    }
+        auto location = findLocation(_url);
+        if (location == nullptr || !isMethodAllowed(location, _method)) {
+            ServeErrorPage(405);  // Method Not Allowed
+            return;
+        }
 
-    // Debugging output
-    std::cout << "Matched location path: " << location->path << std::endl;
-    std::cout << "Allowed methods: ";
-    for (const auto& m : location->methods) {
-        std::cout << m << " ";
-    }
-    std::cout << std::endl;
-    std::cout << "Redirection URL: " << location->redirection << std::endl;
-
-        // Check if the location has a redirection
         if (!location->redirection.empty()) {
-            sendRedirectResponse(location->redirection, location->return_code);
+            Redirect::sendRedirectResponse(_client_fd, _http_version, location->redirection, location->return_code, _config.server_name);
             return;
         }
 
@@ -128,42 +66,6 @@ void Request::ParseRequest() {
     } else {
         std::cerr << "Invalid HTTP request" << std::endl;
         ServeErrorPage(400);  // Bad Request
-    }
-}
-
-void Request::sendRedirectResponse(const std::string& redirection_url, int return_code) {
-    // Map return codes to status messages
-    std::string status_line;
-    switch (return_code) {
-        case 301:
-            status_line = "301 Moved Permanently";
-            break;
-        case 302:
-            status_line = "302 Found";
-            break;
-        case 307:
-            status_line = "307 Temporary Redirect";
-            break;
-        case 308:
-            status_line = "308 Permanent Redirect";
-            break;
-        default:
-            // Default to 302 Found if return_code is unrecognized
-            status_line = std::to_string(return_code) + " Redirect";
-            break;
-    }
-
-    // Build the HTTP response
-    _response = _http_version + " " + status_line + "\r\n";
-    _response += "Location: " + redirection_url + "\r\n";
-    _response += "Content-Length: 0\r\n";
-    _response += "Server: " + _config.server_name + "\r\n";
-    _response += "\r\n";
-
-    // Send the response back to the client
-    ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
-    if (bytes_written == -1) {
-        std::cerr << "Error: write failed" << std::endl;
     }
 }
 
@@ -196,42 +98,27 @@ void Request::SendResponse(const std::string &requestBody) {
 }
 
 
-void Request::GetResponse()
-{
+void Request::GetResponse() {
     std::string filePath = WWW_FOLD + _url;
-
-    // Check if it's a directory
     struct stat pathStat;
     stat(filePath.c_str(), &pathStat);
 
     if (S_ISDIR(pathStat.st_mode)) {
-        // Directory requested; check for autoindex
         auto location = findLocation(_url);
         if (location != nullptr) {
-            // Check if an index file is specified and exists in the directory
             std::string indexFilePath = filePath + "/" + location->index;
             struct stat indexStat;
             if (stat(indexFilePath.c_str(), &indexStat) == 0 && S_ISREG(indexStat.st_mode)) {
-                // Index file exists, serve the index file
                 filePath = indexFilePath;
             } else if (location->autoindex) {
-                // Index file doesn't exist, and autoindex is enabled, generate and serve directory listing
-                std::string host = _config.listen_host;  // Get host from server config
-                int port = _config.listen_port;          // Get port from server config
-
-                // Generate and serve directory listing with the full URL
-                std::string dirListing = generateDirectoryListing(filePath, host, port);
-                responseHeader(dirListing, HTTP_200);  // Use HTTP_200 or relevant status code
-                ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
-                if (bytes_written == -1) {
-                    std::cerr << "Error: write failed" << std::endl;
-                    close(_client_fd);
-                    exit(EXIT_FAILURE);
-                }
+                std::string host = _config.listen_host;
+                int port = _config.listen_port;
+                std::string dirListing = AutoIndex::generateDirectoryListing(filePath, _url, host, port);
+                responseHeader(dirListing, HTTP_200);
+                WriteClient::safeWriteToClient(_client_fd, _response);
                 return;
             } else {
-                // Autoindex is disabled and no index file, serve error
-                ServeErrorPage(403);  // Forbidden (no index file and no autoindex)
+                ServeErrorPage(403);
                 return;
             }
         }
@@ -257,46 +144,8 @@ void Request::GetResponse()
         _response += htmlContent;
     }
 
-    // Send the response
-    ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
-    if (bytes_written == -1) {
-        std::cerr << "Error: write failed" << std::endl;
-        close(_client_fd);
-        exit(EXIT_FAILURE);
-    }
+    WriteClient::safeWriteToClient(_client_fd, _response);
 }
-
-std::string Request::generateDirectoryListing(const std::string& directoryPath, const std::string& host, int port) {
-    std::ostringstream html;
-    html << "<html><head><title>Directory Listing</title></head><body>";
-    html << "<h1>Index of " << _url << "</h1>";
-    html << "<ul>";
-
-    DIR* dir = opendir(directoryPath.c_str());
-    if (dir == nullptr) {
-        return "<html><body>Error: Unable to open directory</body></html>";
-    }
-
-    struct dirent* entry;
-    while ((entry = readdir(dir)) != nullptr) {
-        std::string entryName = entry->d_name;
-        if (entryName == ".") {
-            continue;  // Skip current directory
-        }
-
-        // Construct the full URL with host and port
-        std::string entryUrl = "http://" + host + ":" + std::to_string(port) + _url + (entryName == ".." ? "/.." : "/" + entryName);
-
-        // Generate correct full links with hostname and port
-        html << "<li><a href=\"" << entryUrl << "\">" << entryName << "</a></li>";
-    }
-
-    closedir(dir);
-    html << "</ul></body></html>";
-
-    return html.str();
-}
-
 
 
 void Request::responseHeader(std::string htmlContent, const std::string status_code)
@@ -325,4 +174,27 @@ std::string Request::getCurrentTimeHttpFormat()
     ss << std::put_time(gmt_time, "%a, %d %b %Y %H:%M:%S GMT");
 
     return ss.str();
+}
+
+LocationConfig* Request::findLocation(const std::string& url) {
+    LocationConfig* best_match = nullptr;
+    size_t best_match_length = 0;
+
+    for (auto& location : _config.locations) {
+        if (url.find(location.path) == 0) {  // Match the path prefix
+            size_t path_length = location.path.length();
+            if (path_length > best_match_length) {
+                best_match = &location;
+                best_match_length = path_length;
+            }
+        }
+    }
+    return best_match;  // Return the best matching location
+}
+
+bool Request::isMethodAllowed(LocationConfig* location, const std::string& method) {
+    if (location->methods.empty()) {
+        return true;  // Allow all methods if none are specified (We need to check if this is even good according subject)
+    }
+    return std::find(location->methods.begin(), location->methods.end(), method) != location->methods.end();
 }

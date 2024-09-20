@@ -8,10 +8,15 @@ SRCS := \
 	src/JsonParser.cpp \
 	src/Server.cpp \
 	src/Request.cpp \
-	src/Errors.cpp \
 	src/Post.cpp \
 	src/Delete.cpp \
+	src/Errors.cpp \
 	src/CGI.cpp \
+	src/Redirect.cpp \
+	src/AutoIndex.cpp \
+	src/HeaderParser.cpp \
+	src/BodyParser.cpp \
+	src/WriteClient.cpp \
 
 OBJS	:= $(SRCS:%.c=objs/%.o)
 OBJS_DIR = objs/

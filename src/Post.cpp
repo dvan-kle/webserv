@@ -1,4 +1,5 @@
 #include "../include/Request.hpp"
+#include "../include/WriteClient.hpp"
 
 size_t parseBodySize(const std::string& size_str) {
     size_t multiplier = 1;
@@ -241,11 +242,7 @@ void Request::sendHtmlResponse(const std::string &htmlContent)
     _response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n\r\n";
     _response += htmlContent;
 
-    // Send the response back to the client
-    ssize_t bytes_written = write(_client_fd, _response.c_str(), _response.size());
-    if (bytes_written == -1) {
-        std::cerr << "Error: write failed" << std::endl;
-    }
+    WriteClient::safeWriteToClient(_client_fd, _response);
 }
 
 // if the given directory doesnt exist, it tries to create it
