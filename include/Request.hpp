@@ -9,6 +9,7 @@ const std::string HTTP_400 = "400 Bad Request\r\n";
 const std::string HTTP_403 = "403 Forbidden\r\n";
 const std::string HTTP_404 = "404 Not Found\r\n";
 const std::string HTTP_405 = "405 Method Not Allowed\r\n";
+const std::string HTTP_413 = "413 Payload Too Large\r\n";
 const std::string HTTP_500 = "500 Internal Server Error\r\n";
 const std::string CONTYPE_HTML = "Content-Type: text/html\r\n";
 const std::string CON_TYPE_CSS = "Content-Type: text/css\r\n";

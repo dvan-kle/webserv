@@ -59,7 +59,7 @@ void Request::ParseRequest() {
         }
 
         if (isCgiRequest(_url)) {
-            executeCGI(WWW_FOLD + _url, _method, _body);
+            executeCGI(_url, _method, _body);
         } else {
             SendResponse(_body);
         }

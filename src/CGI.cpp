@@ -6,7 +6,7 @@ bool Request::isCgiRequest(std::string path) {
     std::string::size_type dotPos = path.find_last_of('.');
     if (dotPos != std::string::npos) {
         std::string ext = path.substr(dotPos);
-        return (ext == ".cgi" || ext == ".py");
+        return (ext == ".cgi" || ext == ".py" || ext == ".cgi?" || ext == ".py?");
     }
     return false;
 }
@@ -14,12 +14,11 @@ bool Request::isCgiRequest(std::string path) {
 void Request::executeCGI(std::string path, std::string method, std::string body) {
     try {
         // Set up environment variables for CGI
+        path = path.substr(1);  // Remove leading '/'
         std::string contentLength = std::to_string(body.length());
         std::string requestMethod = method;
         std::string scriptName = path;
         std::string queryString = "";
-
-        std::cout << path << "\n\n";
 
         // Handle the query string for GET requests
         size_t queryPos = _url.find("?");
@@ -117,9 +116,10 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
             WriteClient::safeWriteToClient(_client_fd, responseString);
         }
     } catch (const std::runtime_error &e) {
-        std::cerr << "Error: " << e.what() << std::endl;
-        std::string errorResponse = _http_version + " 504 Gateway Timeout\r\nContent-Type: text/html\r\n\r\n";
-        errorResponse += "<html><body><h1>504 Gateway Timeout</h1><p>The CGI script timed out.</p></body></html>";
-        write(_client_fd, errorResponse.c_str(), errorResponse.size());
+        // std::cerr << "Error: " << e.what() << std::endl;
+        // std::string errorResponse = _http_version + " 504 Gateway Timeout\r\nContent-Type: text/html\r\n\r\n";
+        // errorResponse += "<html><body><h1>504 Gateway Timeout</h1><p>The CGI script timed out.</p></body></html>";
+        // write(_client_fd, errorResponse.c_str(), errorResponse.size());
+        ServeErrorPage(504);
     }
 }
