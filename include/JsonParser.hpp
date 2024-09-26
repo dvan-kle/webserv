@@ -15,9 +15,10 @@ struct LocationConfig {
     bool autoindex = false;
     std::string index;
     std::string upload_path;
-    std::string cgi_extension;
-    std::string cgi_path;
+    std::vector<std::string> cgi_extension;  // Now a list of extensions
+    std::vector<std::string> cgi_path;       // Now a list of paths
 };
+
 
 struct ServerConfig {
     std::string listen_host = "0.0.0.0";
@@ -45,21 +46,21 @@ class JsonParser {
         std::string input_;
         size_t pos_;
 
-        void skipWhitespace();
-        char peek() const;
-        char get();
-        JsonValue parseValue();
-        JsonValue parseNull();
-        JsonValue parseBool();
-        JsonValue parseNumber();
-        JsonValue parseString();
-        JsonValue parseArray();
-        JsonValue parseObject();
-        void expect(const std::string& expected);
+        void jp_skipWhitespace();
+        char jp_peek() const;
+        char jp_get();
+        JsonValue jp_parseValue();
+        JsonValue jp_parseNull();
+        JsonValue jp_parseBool();
+        JsonValue jp_parseNumber();
+        JsonValue jp_parseString();
+        JsonValue jp_parseArray();
+        JsonValue jp_parseObject();
+        void jp_expect(const std::string& expected);
 
     public:
         JsonParser(const std::string& input) : input_(input), pos_(0) {}
-        JsonValue parse();
+        JsonValue jp_parse();
 };
 
 std::vector<ServerConfig> parseConfig(int argc, char* argv[]);

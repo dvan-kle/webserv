@@ -8,6 +8,7 @@
 				"404": "error_pages/error_404.html",
 				"403": "error_pages/error_403.html",
 				"405": "error_pages/error_405.html",
+				"415": "error_pages/error_415.html",
 				"500": "error_pages/error_500.html",
 				"502": "error_pages/error_502.html",
 				"503": "error_pages/error_503.html",
@@ -36,13 +37,13 @@
 					"redirection": "http://nu.nl",
 					"return_code": 301
 				},				
-				{
-                    "path": "cgi-bin",
+                {
+                    "path": "/cgi-bin",
                     "methods": ["GET", "POST"],
-                    "cgi_extension": ".py",
-                    "cgi_path": "/usr/bin/python3",
-					"root": "cgi-bin"
-				}
+                    "cgi_extension": [".py", ".sh", ".cgi"],
+                    "cgi_path": ["/usr/bin/python3", "/bin/bash", "/bin/bash"],
+                    "root": "/cgi-bin"
+                }
 			]
 		}
 	]
