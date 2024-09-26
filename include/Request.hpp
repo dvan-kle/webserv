@@ -12,7 +12,7 @@ const std::string HTTP_405 = "405 Method Not Allowed\r\n";
 const std::string HTTP_413 = "413 Payload Too Large\r\n";
 const std::string HTTP_500 = "500 Internal Server Error\r\n";
 const std::string CONTYPE_HTML = "Content-Type: text/html\r\n";
-const std::string CON_TYPE_CSS = "Content-Type: text/css\r\n";
+const std::string CONTYPE_CSS = "Content-Type: text/css\r\n";
 const std::string CONTENT_LENGTH = "Content-Length: ";
 const std::string ERROR_FOLD = "error_pages";
 const std::string WWW_FOLD = "www/";
@@ -59,6 +59,7 @@ public:
     void responseHeader(std::string htmlContent, const std::string status_code);
     std::string unchunkRequestBody(const std::string &buffer);
     std::string getCurrentTimeHttpFormat();
+    std::string getStatusMessage(int statuscode);
 
     ssize_t convertMaxBodySize(const std::string &input);
     void handleFormUrlEncoded(const std::string &requestBody);
