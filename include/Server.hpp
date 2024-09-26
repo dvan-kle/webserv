@@ -31,4 +31,3 @@ class Server
 		void EpollWait(const std::vector<ServerConfig> &servers);
 		void HandleClient(int client_fd, const std::vector<ServerConfig> &servers);
 };
-
