@@ -1,47 +1,48 @@
 #include "../include/JsonParser.hpp"
 
-void JsonParser::skipWhitespace() {
-    while (pos_ < input_.length() && std::isspace(input_[pos_]))
+void JsonParser::jp_skipWhitespace() {
+    while (pos_ < input_.length() && std::isspace(input_[pos_])) {
         pos_++;
+    }
 }
 
-char JsonParser::peek() const {
+char JsonParser::jp_peek() const {
     if (pos_ < input_.length())
         return input_[pos_];
     return '\0';
 }
 
-char JsonParser::get() {
+char JsonParser::jp_get() {
     if (pos_ < input_.length())
         return input_[pos_++];
     return '\0';
 }
 
-JsonValue JsonParser::parseValue() {
-    skipWhitespace();
-    char c = peek();
+JsonValue JsonParser::jp_parseValue() {
+    jp_skipWhitespace();
+    char c = jp_peek();
     if (c == 'n')
-        return parseNull();
+        return jp_parseNull();
     if (c == 't' || c == 'f')
-        return parseBool();
+        return jp_parseBool();
     if (c == '-' || std::isdigit(c))
-        return parseNumber();
+        return jp_parseNumber();
     if (c == '"')
-        return parseString();
+        return jp_parseString();
     if (c == '[')
-        return parseArray();
+        return jp_parseArray();
     if (c == '{')
-        return parseObject();
+        return jp_parseObject();
 
     throw std::runtime_error(std::string("Unexpected character: ") + c);
 }
 
-JsonValue JsonParser::parseNull() {
-    expect("null");
-    return JsonValue();  // Null value
+JsonValue JsonParser::jp_parseNull() {
+    jp_expect("null");
+    return JsonValue();
 }
 
-JsonValue JsonParser::parseBool() {
+JsonValue JsonParser::jp_parseBool() {
     if (input_.substr(pos_, 4) == "true") {
         pos_ += 4;
         JsonValue value;
@@ -58,30 +59,30 @@ JsonValue JsonParser::parseBool() {
         throw std::runtime_error("Invalid boolean value");
 }
 
-JsonValue JsonParser::parseNumber() {
+JsonValue JsonParser::jp_parseNumber() {
     size_t start_pos = pos_;
-    if (peek() == '-')
+    if (jp_peek() == '-')
         pos_++;
-    if (peek() == '0')
+    if (jp_peek() == '0')
         pos_++;
-    else if (std::isdigit(peek()))
-        while (std::isdigit(peek())) pos_++;
+    else if (std::isdigit(jp_peek()))
+        while (std::isdigit(jp_peek())) pos_++;
     else
         throw std::runtime_error("Invalid number");
-    if (peek() == '.') {
+    if (jp_peek() == '.') {
         pos_++;
-        if (!std::isdigit(peek()))
+        if (!std::isdigit(jp_peek()))
             throw std::runtime_error("Invalid number");
-        while (std::isdigit(peek()))
+        while (std::isdigit(jp_peek()))
             pos_++;
     }
-    if (peek() == 'e' || peek() == 'E') {
+    if (jp_peek() == 'e' || jp_peek() == 'E') {
         pos_++;
-        if (peek() == '+' || peek() == '-')
+        if (jp_peek() == '+' || jp_peek() == '-')
             pos_++;
-        if (!std::isdigit(peek()))
+        if (!std::isdigit(jp_peek()))
             throw std::runtime_error("Invalid number");
-        while (std::isdigit(peek()))
+        while (std::isdigit(jp_peek()))
             pos_++;
     }
     std::string number_str = input_.substr(start_pos, pos_ - start_pos);
@@ -91,19 +92,19 @@ JsonValue JsonParser::parseNumber() {
     return value;
 }
 
-JsonValue JsonParser::parseString() {
-    expect("\"");
+JsonValue JsonParser::jp_parseString() {
+    jp_expect("\"");
     std::string result;
     while (true) {
         if (pos_ >= input_.length())
             throw std::runtime_error("Unterminated string");
-        char c = get();
+        char c = jp_get();
         if (c == '"')
             break;
         else if (c == '\\') {
             if (pos_ >= input_.length())
                 throw std::runtime_error("Unterminated string");
-            c = get();
+            c = jp_get();
             if (c == '"' || c == '\\' || c == '/')
                  result += c;
             else if (c == 'b')
@@ -129,24 +130,24 @@ JsonValue JsonParser::parseString() {
     return value;
 }
 
-JsonValue JsonParser::parseArray() {
-    expect("[");
+JsonValue JsonParser::jp_parseArray() {
+    jp_expect("[");
     JsonValue value;
     value.type = JsonType::Array;
-    skipWhitespace();
-    if (peek() == ']') {
-        get();  // Consume ']'
+    jp_skipWhitespace();
+    if (jp_peek() == ']') {
+        jp_get();  // Consume ']'
         return value;
     }
     while (true) {
-        JsonValue element = parseValue();
+        JsonValue element = jp_parseValue();
         value.array_value.push_back(element);
-        skipWhitespace();
-        if (peek() == ',') {
-            get();  // Consume ','
-            skipWhitespace();
-        } else if (peek() == ']') {
-            get();  // Consume ']'
+        jp_skipWhitespace();
+        if (jp_peek() == ',') {
+            jp_get();  // Consume ','
+            jp_skipWhitespace();
+        } else if (jp_peek() == ']') {
+            jp_get();  // Consume ']'
             break;
         } else
             throw std::runtime_error("Expected ',' or ']'");
@@ -154,30 +155,30 @@ JsonValue JsonParser::parseArray() {
     return value;
 }
 
-JsonValue JsonParser::parseObject() {
-    expect("{");
+JsonValue JsonParser::jp_parseObject() {
+    jp_expect("{");
     JsonValue value;
     value.type = JsonType::Object;
-    skipWhitespace();
-    if (peek() == '}') {
-        get();  // Consume '}'
+    jp_skipWhitespace();
+    if (jp_peek() == '}') {
+        jp_get();  // Consume '}'
         return value;
     }
     while (true) {
-        skipWhitespace();
-        if (peek() != '"')
+        jp_skipWhitespace();
+        if (jp_peek() != '"')
             throw std::runtime_error("Expected string key");
-        JsonValue key = parseString();
-        skipWhitespace();
-        expect(":");
-        JsonValue val = parseValue();
+        JsonValue key = jp_parseString();
+        jp_skipWhitespace();
+        jp_expect(":");
+        JsonValue val = jp_parseValue();
         value.object_value[key.string_value] = val;
-        skipWhitespace();
-        if (peek() == ',') {
-            get();  // Consume ','
-            skipWhitespace();
-        } else if (peek() == '}') {
-            get();  // Consume '}'
+        jp_skipWhitespace();
+        if (jp_peek() == ',') {
+            jp_get();  // Consume ','
+            jp_skipWhitespace();
+        } else if (jp_peek() == '}') {
+            jp_get();  // Consume '}'
             break;
         } else
             throw std::runtime_error("Expected ',' or '}'");
@@ -185,61 +186,20 @@ JsonValue JsonParser::parseObject() {
     return value;
 }
 
-void JsonParser::expect(const std::string& expected) {
+void JsonParser::jp_expect(const std::string& expected) {
     for (char c : expected) {
-        if (get() != c)
+        if (jp_get() != c)
             throw std::runtime_error(std::string("Expected '") + expected + "'");
     }
 }
 
-JsonValue JsonParser::parse() {
-    skipWhitespace();
-    JsonValue value = parseValue();
-    skipWhitespace();
+JsonValue JsonParser::jp_parse() {
+    jp_skipWhitespace();
+    JsonValue value = jp_parseValue();
+    jp_skipWhitespace();
     if (pos_ != input_.length())
         throw std::runtime_error("Extra characters after JSON data");
     return value;
-}
-
-// Function to display the parsed configuration (for testing purposes)
-void displayConfig(const std::vector<ServerConfig>& servers) {
-    for (const auto& server : servers) {
-        std::cout << "Server:" << std::endl;
-        std::cout << "  Listen: " << server.listen_host << ":" << server.listen_port << std::endl;
-        std::cout << "  Server Name: " << server.server_name << std::endl;
-        std::cout << "  Client Max Body Size: " << server.client_max_body_size << std::endl;
-
-        std::cout << "  Error Pages:" << std::endl;
-        for (const auto& error_page : server.error_pages) {
-            std::cout << "    " << error_page.first << " => " << error_page.second << std::endl;
-        }
-
-        std::cout << "  Locations:" << std::endl;
-        for (const auto& loc : server.locations) {
-            std::cout << "    Location: " << loc.path << std::endl;
-            std::cout << "      Methods: ";
-            for (const auto& method : loc.methods) {
-                std::cout << method << " ";
-            }
-            std::cout << std::endl;
-            if (!loc.redirection.empty())
-                std::cout << "      Redirection: " << loc.redirection << std::endl;
-            if (loc.return_code != 0)
-                std::cout << "      Return Code: " << loc.return_code << std::endl;
-            if (!loc.root.empty())
-                std::cout << "      Root: " << loc.root << std::endl;
-            std::cout << "      Autoindex: " << (loc.autoindex ? "On" : "Off") << std::endl;
-            if (!loc.index.empty())
-                std::cout << "      Index: " << loc.index << std::endl;
-            if (!loc.upload_path.empty())
-                std::cout << "      Upload Path: " << loc.upload_path << std::endl;
-            if (!loc.cgi_extension.empty())
-                std::cout << "      CGI Extension: " << loc.cgi_extension << std::endl;
-            if (!loc.cgi_path.empty())
-                std::cout << "      CGI Path: " << loc.cgi_path << std::endl;
-        }
-        std::cout << std::endl;
-    }
 }
 
 void parseConfigFromJsonValue(const JsonValue& json, std::vector<ServerConfig>& servers) {
@@ -335,7 +295,7 @@ void parseConfigFromJsonValue(const JsonValue& json, std::vector<ServerConfig>& 
 }
 
 std::vector<ServerConfig> parseConfig(int argc, char* argv[]) {
-    std::string config_file = "webserv.json";
+    std::string config_file;
     if (argc > 1) {
         config_file = argv[1];
     }
@@ -343,7 +303,7 @@ std::vector<ServerConfig> parseConfig(int argc, char* argv[]) {
     // Read the configuration file
     std::ifstream file(config_file);
     if (!file.is_open()) {
-        // std::cout << "Cannot open configuration file: " << config_file << std::endl;
+        std::cout << "Cannot open configuration file: " << config_file << std::endl;
         exit(1);
     }
     std::stringstream buffer;
@@ -355,9 +315,9 @@ std::vector<ServerConfig> parseConfig(int argc, char* argv[]) {
     JsonParser parser(config_content);
     JsonValue json_root;
     try {
-        json_root = parser.parse();
+        json_root = parser.jp_parse();
     } catch (const std::exception& e) {
-        // std::cout << "Failed to parse JSON configuration: " << e.what() << std::endl;
+        std::cout << "Failed to parse JSON configuration: " << e.what() << std::endl;
         exit(1);
     }
 
@@ -366,12 +326,9 @@ std::vector<ServerConfig> parseConfig(int argc, char* argv[]) {
     try {
         parseConfigFromJsonValue(json_root, servers);
     } catch (const std::exception& e) {
-        // std::cout << "Failed to parse configuration: " << e.what() << std::endl;
+        std::cout << "Failed to parse configuration: " << e.what() << std::endl;
         exit(1);
     }
-
-    // Display the parsed configuration (for testing)
-    // displayConfig(servers);
 
     return servers;
 }

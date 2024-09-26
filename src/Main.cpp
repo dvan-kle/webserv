@@ -2,7 +2,7 @@
 #include "../include/Server.hpp"
 
 int main(int argc, char **argv) {
-    if (argc < 2) {
+    if (argc != 2) {
         std::cout << "Usage: " + std::string(argv[0]) + " <config_file>" << std::endl;
         return 1;
     }
