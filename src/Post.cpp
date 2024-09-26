@@ -207,7 +207,8 @@ void Request::handleMultipartFormData(const std::string &requestBody) {
 
         // Save the file to the "uploads" directory
         std::string uploadDir = "uploads";
-        createDir(uploadDir);  // Ensure the uploads directory exists
+        createDir(uploadDir);
+        // Ensure the uploads directory exists
 
         std::string filePath = uploadDir + "/" + filename;
         std::ofstream outFile(filePath, std::ios::binary);
@@ -247,7 +248,8 @@ void Request::sendHtmlResponse(const std::string &htmlContent)
 
 // if the given directory doesnt exist, it tries to create it
 void Request::createDir(const std::string &name) {
-    struct stat st = {0};
+    struct stat st;
+    memset(&st, 0, sizeof(st));
     if (stat(name.c_str(), &st) == -1) {
         if (mkdir(name.c_str(), 0700) == -1) {
             std::cerr << "Error creating directory: " << name << std::endl;

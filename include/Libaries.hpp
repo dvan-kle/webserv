@@ -1,5 +1,7 @@
 #pragma once
 
+#include <utility>
+#include <unordered_map>
 #include <string>
 #include <map>
 #include <vector>
@@ -24,6 +26,7 @@
 #include <arpa/inet.h>
 #include <cstring>
 #include <dirent.h>
+#include <memory>
 
 
 

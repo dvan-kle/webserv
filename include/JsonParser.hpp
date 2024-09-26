@@ -2,6 +2,8 @@
 
 #include "Libaries.hpp"
 
+struct JsonValue;
+
 enum class JsonType { Null, Bool, Number, String, Array, Object };
 
 struct LocationConfig {

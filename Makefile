@@ -1,25 +1,11 @@
-NAME	:= webserv
-CFLAGS	:= -Wextra -Wall -Werror -g
-
-HEADERS	:= -I ./include -I $(LIBMLX)/include 
-
-SRCS := \
-	src/Main.cpp \
-	src/JsonParser.cpp \
-	src/Server.cpp \
-	src/Request.cpp \
-	src/Post.cpp \
-	src/Delete.cpp \
-	src/Errors.cpp \
-	src/CGI.cpp \
-	src/Redirect.cpp \
-	src/AutoIndex.cpp \
-	src/HeaderParser.cpp \
-	src/BodyParser.cpp \
-	src/WriteClient.cpp \
-
-OBJS	:= $(SRCS:%.c=objs/%.o)
-OBJS_DIR = objs/
+NAME = webserv
+CC = c++
+CFLAGS = -std=c++20 -Wall -Wextra -Werror -g
+BUILD_DIR = build
+SRC_DIR = src
+INC_DIR = include
+SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
+OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
 
 RED = \033[1;31m
 GREEN = \033[1;32m
@@ -27,25 +13,24 @@ YELLOW = \033[1;33m
 BLUE = \033[1;34m
 RESET = \033[0m
 
-all: $(NAME)
+all: $(BUILD_DIR) $(NAME)
 
-$(NAME): $(OBJS)
-	@echo "$(YELLOW)Compiling $(NAME)...$(RESET)"
-	c++ -std=c++20 $(OBJS) -o $(NAME)
+$(BUILD_DIR):
+	@mkdir -p $(BUILD_DIR)
+
+$(NAME): $(OBJECTS)
+	@echo "$(YELLOW)Linking $(NAME)...$(RESET)"
+	@$(CC) $(CFLAGS) -o $(NAME) $(OBJECTS)
 	@echo "$(GREEN)$(NAME) compiled successfully!$(RESET)"
 
-$(OBJS_DIR)%.o: %.c
-	@echo "$(BLUE)Creating $(NAME) object files...$(RESET)"
-	mkdir -p $(dir $@)
-	@$(CC) $(CFLAGS) $(HEADERS) -c $< -o $@
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.cpp
+	@$(CC) $(CFLAGS) -I$(INC_DIR) -c $< -o $@
+	@echo "$(BLUE)Compiling $< ...$(RESET)"
 
 clean:
-	@rm -rf objs
-	@rm -rf $(LIBMLX)/build
+	@rm -rf $(BUILD_DIR)
 
 fclean: clean
-	@rm -rf $(NAME)
+	@rm -f $(NAME)
 
 re: fclean all
-
-.PHONY: all clean fclean re

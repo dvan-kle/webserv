@@ -69,7 +69,6 @@ void Server::EpollCreate()
 void Server::EpollWait(const std::vector<ServerConfig> &servers)
 {
 	while (true) {
-		int i = 0;
 		int nfds = epoll_wait(_epoll_fd, _events, MAX_EVENTS, -1);
 		if (nfds == -1) {
 			std::cerr << "Error: epoll_wait failed" << std::endl;

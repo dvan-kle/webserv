@@ -152,7 +152,7 @@ void Request::responseHeader(std::string htmlContent, const std::string status_c
 {
     _response += _http_version + " " + status_code;
 	if (_url.find(".css") != std::string::npos)
-		_response += CON_TYPE_CSS;
+		_response += CONTYPE_CSS;
 	else
 		_response += CONTYPE_HTML;
 	_response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n";
@@ -174,6 +174,29 @@ std::string Request::getCurrentTimeHttpFormat()
     ss << std::put_time(gmt_time, "%a, %d %b %Y %H:%M:%S GMT");
 
     return ss.str();
+}
+
+std::string Request::getStatusMessage(int statuscode)
+{
+    switch (statuscode)
+    {
+    case 200:
+        return HTTP_200;
+    case 400:
+        return HTTP_400;
+    case 403:
+        return HTTP_403;
+    case 404:
+        return HTTP_404;
+    case 405:
+        return HTTP_405;
+    case 413:
+        return HTTP_413;
+    case 500:
+        return HTTP_500;
+    default:
+        return HTTP_200;
+    }
 }
 
 LocationConfig* Request::findLocation(const std::string& url) {
