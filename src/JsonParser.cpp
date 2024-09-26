@@ -281,12 +281,29 @@ void parseConfigFromJsonValue(const JsonValue& json, std::vector<ServerConfig>& 
                 if (loc_obj.find("upload_path") != loc_obj.end()) {
                     loc.upload_path = loc_obj.at("upload_path").string_value;
                 }
+
+                // Parse cgi_extension as an array
                 if (loc_obj.find("cgi_extension") != loc_obj.end()) {
-                    loc.cgi_extension = loc_obj.at("cgi_extension").string_value;
+                    const auto& cgi_extension_json = loc_obj.at("cgi_extension");
+                    if (cgi_extension_json.type != JsonType::Array) {
+                        throw std::runtime_error("'cgi_extension' should be an array");
+                    }
+                    for (const auto& ext_json : cgi_extension_json.array_value) {
+                        loc.cgi_extension.push_back(ext_json.string_value);
+                    }
                 }
+
+                // Parse cgi_path as an array
                 if (loc_obj.find("cgi_path") != loc_obj.end()) {
-                    loc.cgi_path = loc_obj.at("cgi_path").string_value;
+                    const auto& cgi_path_json = loc_obj.at("cgi_path");
+                    if (cgi_path_json.type != JsonType::Array) {
+                        throw std::runtime_error("'cgi_path' should be an array");
+                    }
+                    for (const auto& path_json : cgi_path_json.array_value) {
+                        loc.cgi_path.push_back(path_json.string_value);
+                    }
                 }
+
                 server.locations.push_back(loc);
             }
         }

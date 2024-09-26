@@ -37,13 +37,13 @@
 					"redirection": "http://nu.nl",
 					"return_code": 301
 				},				
-				{
+                {
                     "path": "/cgi-bin",
                     "methods": ["GET", "POST"],
-                    "cgi_extension": ".sh",
-                    "cgi_path": "/bin/bash",
-					"root": "/cgi-bin"
-				}
+                    "cgi_extension": [".py", ".sh"],
+                    "cgi_path": ["/usr/bin/python3", "/bin/bash"],
+                    "root": "/cgi-bin"
+                }
 			]
 		}
 	]

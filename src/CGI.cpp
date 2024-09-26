@@ -1,22 +1,21 @@
 #include "../include/Request.hpp"
 #include "../include/WriteClient.hpp"
 
-// Enhanced function to check for CGI request with appropriate error handling
 bool Request::isCgiRequest(std::string path) {
     LocationConfig* location = findLocation(_url);
 
     if (location != nullptr && !location->cgi_extension.empty()) {
-        // Check if the file matches the CGI extension defined in the config
         std::string::size_type dotPos = path.find_last_of('.');
         if (dotPos != std::string::npos) {
             std::string ext = path.substr(dotPos);
-            if (ext == location->cgi_extension) {
-                return true;
-            } else {
-                std::cerr << "Unsupported extension: " << ext << std::endl;
-                ServeErrorPage(415);
-                return false;
+            for (const auto& valid_ext : location->cgi_extension) {
+                if (ext == valid_ext) {
+                    return true;
+                }
             }
+            std::cerr << "Unsupported extension: " << ext << std::endl;
+            ServeErrorPage(415);
+            return false;
         }
     }
 
@@ -24,7 +23,7 @@ bool Request::isCgiRequest(std::string path) {
     return false;
 }
 
-// Enhanced executeCGI function with detailed error handling
+
 void Request::executeCGI(std::string path, std::string method, std::string body) {
     try {
         // Set up environment variables for CGI
@@ -76,21 +75,42 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
 
             alarm(5);  // Kill process if it exceeds 5 seconds
 
-            // Use the `cgi_path` from the configuration
+            // Use the `cgi_path` based on the file extension
             LocationConfig* location = findLocation(_url);
-            if (location != nullptr && !location->cgi_path.empty()) {
-                std::cerr << "Executing CGI script: " << path << " with cgi_path: " << location->cgi_path << std::endl;
+            if (location != nullptr && !location->cgi_path.empty() && !location->cgi_extension.empty()) {
+                // Get the file extension
+                std::string::size_type dotPos = path.find_last_of('.');
+                if (dotPos != std::string::npos) {
+                    std::string ext = path.substr(dotPos);
 
-                // Execute CGI using the configured cgi_path
-                char *const cgiExecArgv[] = {(char *)location->cgi_path.c_str(), (char *)path.c_str(), NULL};
+                    // Find the matching CGI interpreter based on the extension
+                    bool executed = false;
+                    for (size_t i = 0; i < location->cgi_extension.size(); ++i) {
+                        if (ext == location->cgi_extension[i]) {
+                            std::cerr << "Attempting to execute CGI script: " << path << " with cgi_path: " << location->cgi_path[i] << std::endl;
 
-                if (execve(location->cgi_path.c_str(), cgiExecArgv, envp) == -1) {
-                    std::cerr << "Failed to execute CGI script using " << location->cgi_path << std::endl;
+                            // Execute CGI using the matched interpreter
+                            char *const cgiExecArgv[] = {(char *)location->cgi_path[i].c_str(), (char *)path.c_str(), NULL};
+
+                            if (execve(location->cgi_path[i].c_str(), cgiExecArgv, envp) != -1) {
+                                executed = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!executed) {
+                        std::cerr << "No valid CGI interpreter found for extension: " << ext << std::endl;
+                        ServeErrorPage(500);
+                        exit(1);
+                    }
+                } else {
+                    std::cerr << "Failed to determine file extension for " << path << std::endl;
                     ServeErrorPage(500);
                     exit(1);
                 }
             } else {
-                std::cerr << "No valid CGI path configured" << std::endl;
+                std::cerr << "No valid CGI path or extension configured" << std::endl;
                 ServeErrorPage(500);
                 exit(1);
             }

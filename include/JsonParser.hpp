@@ -13,9 +13,10 @@ struct LocationConfig {
     bool autoindex = false;
     std::string index;
     std::string upload_path;
-    std::string cgi_extension;
-    std::string cgi_path;
+    std::vector<std::string> cgi_extension;  // Now a list of extensions
+    std::vector<std::string> cgi_path;       // Now a list of paths
 };
+
 
 struct ServerConfig {
     std::string listen_host = "0.0.0.0";
