@@ -19,7 +19,6 @@ bool Request::isCgiRequest(std::string path) {
         }
     }
 
-    ServeErrorPage(404);
     return false;
 }
 

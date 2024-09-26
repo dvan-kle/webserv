@@ -40,7 +40,7 @@
                 {
                     "path": "/cgi-bin",
                     "methods": ["GET", "POST"],
-                    "cgi_extension": [".py", ".sh"],
+                    "cgi_extension": [".py", ".sh", ".cgi"],
                     "cgi_path": ["/usr/bin/python3", "/bin/bash"],
                     "root": "/cgi-bin"
                 }

@@ -1,8 +1,6 @@
 #!/bin/bash
 # A simple bash CGI script that outputs HTML
 
-echo "Content-type: text/html"
-echo ""
 echo "<html>"
 echo "<head>"
 echo "<title>Bash CGI Test</title>"
