@@ -10,11 +10,11 @@ std::string JsonParser::getNextString() {
     skipWhitespace();  // Ensure no leading whitespace
 
     if (pos_ >= input_.length()) {
-        throw std::runtime_error("Reached end of input while expecting '\"'");
+        throw std::runtime_error("Error: Reached end of input while expecting '\"'");
     }
 
     if (input_[pos_] != '"') {
-        throw std::runtime_error("Expected '\"'");
+        throw std::runtime_error(std::string("Error: Expected '\"' but found '") + input_[pos_] + "' at position " + std::to_string(pos_));
     }
 
     expect('"');  // Expect opening quote
@@ -25,7 +25,7 @@ std::string JsonParser::getNextString() {
     }
 
     if (pos_ >= input_.length()) {
-        throw std::runtime_error("Unterminated string");
+        throw std::runtime_error("Error: Unterminated string starting at position " + std::to_string(start));
     }
 
     std::string result = input_.substr(start, pos_ - start);
@@ -38,12 +38,12 @@ int JsonParser::getNextInt() {
     skipWhitespace();
 
     if (pos_ >= input_.length()) {
-        throw std::runtime_error("Reached end of input while expecting a number");
+        throw std::runtime_error("Error: Reached end of input while expecting a number");
     }
 
     size_t start = pos_;
     if (!std::isdigit(input_[pos_]) && input_[pos_] != '-') {
-        throw std::runtime_error("Expected a number");
+        throw std::runtime_error(std::string("Error: Expected a number but found '") + input_[pos_] + "' at position " + std::to_string(pos_));
     }
 
     while (pos_ < input_.length() && std::isdigit(input_[pos_])) {
@@ -55,12 +55,10 @@ int JsonParser::getNextInt() {
     try {
         return std::stoi(int_str);
     } catch (const std::exception& e) {
-        throw;
+        throw std::runtime_error(std::string("Error: Failed to convert '") + int_str + "' to an integer at position " + std::to_string(start));
     }
 }
 
-
-// Helper function to get the next boolean value.
 bool JsonParser::getNextBool() {
     skipWhitespace();
     if (input_.substr(pos_, 4) == "true") {
@@ -70,7 +68,7 @@ bool JsonParser::getNextBool() {
         pos_ += 5;
         return false;
     } else {
-        throw std::runtime_error("Expected boolean value");
+        throw std::runtime_error("Error: Expected boolean value (true or false) at position " + std::to_string(pos_));
     }
 }
 
@@ -91,28 +89,26 @@ std::vector<std::string> JsonParser::getNextStringArray() {
             pos_++;  // End of array
             break;
         } else {
-            throw std::runtime_error("Expected ',' or ']'");
+            throw std::runtime_error("Error: Expected ',' or ']' but found '" + std::string(1, input_[pos_]) + "' at position " + std::to_string(pos_));
         }
     }
 
     return result;
 }
 
-
 void JsonParser::expect(char expected) {
     skipWhitespace();
 
     if (pos_ >= input_.length()) {
-        throw std::runtime_error("Reached end of input while expecting character");
+        throw std::runtime_error(std::string("Error: Reached end of input while expecting '") + expected + "'");
     }
 
     if (input_[pos_] != expected) {
-        throw std::runtime_error(std::string("Expected '") + expected + "'");
+        throw std::runtime_error(std::string("Error: Expected '") + expected + "' but found '" + input_[pos_] + "' at position " + std::to_string(pos_));
     }
 
     pos_++;
 }
-
 
 std::unordered_map<int, std::string> JsonParser::parseErrorPages() {
     expect('{');  // Start of error pages object
@@ -129,7 +125,7 @@ std::unordered_map<int, std::string> JsonParser::parseErrorPages() {
         try {
             code = std::stoi(code_str);
         } catch (const std::exception& e) {
-            throw;
+            throw std::runtime_error("Error: Failed to convert error code '" + code_str + "' to an integer");
         }
 
         skipWhitespace();
@@ -144,16 +140,18 @@ std::unordered_map<int, std::string> JsonParser::parseErrorPages() {
             pos_++;  // End of object
             break;
         } else {
-            throw std::runtime_error("Expected ',' or '}' in error pages");
+            throw std::runtime_error("Error: Expected ',' or '}' in error pages, but found '" + std::string(1, input_[pos_]) + "' at position " + std::to_string(pos_));
         }
     }
-    
+
     return error_pages;
 }
 
-
 LocationConfig JsonParser::parseLocationConfig() {
     LocationConfig loc;
+    bool has_path = false;
+    bool has_methods = false;
+
     expect('{');
 
     while (true) {
@@ -163,8 +161,10 @@ LocationConfig JsonParser::parseLocationConfig() {
 
         if (key == "path") {
             loc.path = getNextString();
+            has_path = true;
         } else if (key == "methods") {
             loc.methods = getNextStringArray();
+            has_methods = true;
         } else if (key == "root") {
             loc.root = getNextString();
         } else if (key == "autoindex") {
@@ -182,27 +182,37 @@ LocationConfig JsonParser::parseLocationConfig() {
         } else if (key == "index") {
             loc.index = getNextString();
         } else {
-            throw std::runtime_error("Unknown key in location config");
+            throw std::runtime_error("Error: Unknown key '" + key + "' in location config");
         }
 
         skipWhitespace();
         if (input_[pos_] == ',') {
             pos_++;
         } else if (input_[pos_] == '}') {
-            pos_++;
+            pos_++;  // End of object
             break;
         } else {
-            throw std::runtime_error("Expected ',' or '}'");
+            throw std::runtime_error("Error: Expected ',' or '}' but found '" + std::string(1, input_[pos_]) + "' in location config at position " + std::to_string(pos_));
         }
+    }
+
+    // Check for missing required fields
+    if (!has_path) {
+        throw std::runtime_error("Error: Missing required field 'path' in location config");
+    }
+    if (!has_methods) {
+        throw std::runtime_error("Error: Missing required field 'methods' in location config");
     }
 
     return loc;
 }
 
-
-// Parse a single server configuration object.
 ServerConfig JsonParser::parseServerConfig() {
     ServerConfig server;
+    bool has_listen_host = false;
+    bool has_listen_port = false;
+    bool has_server_name = false;
+
     expect('{');
 
     while (true) {
@@ -212,10 +222,13 @@ ServerConfig JsonParser::parseServerConfig() {
 
         if (key == "listen_host") {
             server.listen_host = getNextString();
+            has_listen_host = true;
         } else if (key == "listen_port") {
             server.listen_port = getNextInt();
+            has_listen_port = true;
         } else if (key == "server_name") {
             server.server_name = getNextString();
+            has_server_name = true;
         } else if (key == "error_pages") {
             server.error_pages = parseErrorPages();
         } else if (key == "client_max_body_size") {
@@ -230,23 +243,40 @@ ServerConfig JsonParser::parseServerConfig() {
                 }
             }
             expect(']');  // End of locations array
+        } else {
+            throw std::runtime_error("Error: Unknown key '" + key + "' in server config");
         }
 
         skipWhitespace();
         if (input_[pos_] == ',') {
             pos_++;
         } else if (input_[pos_] == '}') {
-            pos_++;
+            pos_++;  // End of object
             break;
+        } else {
+            throw std::runtime_error("Error: Expected ',' or '}' but found '" + std::string(1, input_[pos_]) + "' in server config at position " + std::to_string(pos_));
         }
+    }
+
+    // Check for missing required fields
+    if (!has_listen_host) {
+        throw std::runtime_error("Error: Missing required field 'listen_host' in server config");
+    }
+    if (!has_listen_port) {
+        throw std::runtime_error("Error: Missing required field 'listen_port' in server config");
+    }
+    if (!has_server_name) {
+        throw std::runtime_error("Error: Missing required field 'server_name' in server config");
     }
 
     return server;
 }
 
-// Main parser method that parses the whole configuration.
+
 std::vector<ServerConfig> JsonParser::parse() {
     std::vector<ServerConfig> servers;
+    bool has_servers = false;
+
     expect('{');  // Expect the start of the root object
 
     while (true) {
@@ -255,6 +285,7 @@ std::vector<ServerConfig> JsonParser::parse() {
         expect(':');
 
         if (key == "servers") {
+            has_servers = true;
             expect('[');  // Start of servers array
             while (input_[pos_] != ']') {
                 servers.push_back(parseServerConfig());
@@ -264,15 +295,22 @@ std::vector<ServerConfig> JsonParser::parse() {
                 }
             }
             expect(']');  // End of servers array
+        } else {
+            throw std::runtime_error("Error: Unknown key '" + key + "' at the root level");
         }
 
         skipWhitespace();
         if (input_[pos_] == ',') {
             pos_++;
         } else if (input_[pos_] == '}') {
-            pos_++;
+            pos_++;  // End of object
             break;
         }
+    }
+
+    // Check for missing required fields
+    if (!has_servers) {
+        throw std::runtime_error("Error: Missing required field 'servers' in root object");
     }
 
     return servers;
