@@ -26,19 +26,30 @@
             <p>Select a script from the list below and see its output.</p>
 
             <div class="cgi-scripts">
+                <!-- GET forms -->
                 <form action="cgi-bin/test.py" method="GET">
-                    <button type="submit">Execute test.py</button>
+                    <button type="submit">Execute test.py (GET)</button>
+                </form>
+                <form action="cgi-bin/test.sh" method="GET">
+                    <button type="submit">Execute test.sh (GET)</button>
                 </form>
                 <form action="cgi-bin/test.cgi" method="GET">
-                    <button type="submit">Execute test.cgi</button>
+                    <button type="submit">Execute test.cgi (GET)</button>
                 </form>
-                <form action="cgi-bin/post_get_test.cgi" method="GET"></form>
-                    <button type="submit">Execute post_get_test.py</button>
+                <form action="cgi-bin/timeout.py" method="GET">
+                    <button type="submit">Execute timeout.py (GET)</button>
                 </form>
-                <form action="cgi-bin/timeout.py" method="GET"></form>
-                    <button type="submit">Execute timeout.py</button>
+
+                <!-- POST forms -->
+                <h3>Execute CGI Scripts with POST</h3>
+
+                <form action="cgi-bin/test.py" method="POST">
+                    <label for="name">Name:</label>
+                    <input type="text" id="name" name="name" required><br>
+                    <label for="age">Age:</label>
+                    <input type="text" id="age" name="age" required><br>
+                    <button type="submit">Execute test.py (POST)</button>
                 </form>
-                <!-- Add more scripts as needed -->
             </div>
         </section>
     </main>

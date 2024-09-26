@@ -5,6 +5,13 @@ bool Request::isCgiRequest(std::string path) {
     LocationConfig* location = findLocation(_url);
 
     if (location != nullptr && !location->cgi_extension.empty()) {
+        // Find position of '?' to remove query string if present
+        std::string::size_type queryPos = path.find("?");
+        if (queryPos != std::string::npos) {
+            path = path.substr(0, queryPos);  // Remove query string
+        }
+
+        // Find the last occurrence of '.' to get the file extension
         std::string::size_type dotPos = path.find_last_of('.');
         if (dotPos != std::string::npos) {
             std::string ext = path.substr(dotPos);
@@ -22,18 +29,26 @@ bool Request::isCgiRequest(std::string path) {
     return false;
 }
 
-
 void Request::executeCGI(std::string path, std::string method, std::string body) {
     try {
+        // Remove query string from the path (if any)
+        size_t queryPos = path.find("?");
+        if (queryPos != std::string::npos) {
+            path = path.substr(0, queryPos);  // Remove query string
+        }
+
+        // Ensure the path does not have an extra '/' at the beginning
+        if (path[0] == '/') {
+            path = path.substr(1);  // Remove leading '/'
+        }
+
         // Set up environment variables for CGI
-        path = path.substr(1);  // Remove leading '/'
         std::string contentLength = std::to_string(body.length());
         std::string requestMethod = method;
         std::string scriptName = path;
         std::string queryString = "";
 
         // Handle the query string for GET requests
-        size_t queryPos = _url.find("?");
         if (queryPos != std::string::npos) {
             queryString = _url.substr(queryPos + 1);
         }
