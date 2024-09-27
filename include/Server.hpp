@@ -20,10 +20,10 @@ class Server
 		int _conn_sock;
 
 		void EpollCreate();
-		void CreateSocket(int port);
+		void CreateSocket(int port, const std::string &ip);
 		
 	public:
-		Server(const std::vector<int> &ports, const std::vector<ServerConfig> &servers);
+		Server(const std::vector<int> &ports, const std::vector<std::string> &hosts, const std::vector<ServerConfig> &servers);
 		Server(const Server &src) = delete;
 		Server &operator=(const Server &src) = delete;
 		~Server();

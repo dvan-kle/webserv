@@ -1,21 +1,25 @@
 #include "../include/Server.hpp"
 #include "../include/Request.hpp"
 
-Server::Server(const std::vector<int> &ports, const std::vector<ServerConfig> &servers)
+Server::Server(const std::vector<int> &ports, const std::vector<std::string> &hosts, const std::vector<ServerConfig> &servers)
 {
-	for (const auto &port : ports) {
-		CreateSocket(port);
+	for (size_t i = 0; i < ports.size(); ++i) {
+		CreateSocket(ports[i], hosts[i]);
 	}
 	EpollCreate();
-	std::cout << YELLOW << "Server is listening with address " << inet_ntoa(_address.sin_addr) << " on ports: " << GREEN << std::endl << std::endl;
+	std::cout << YELLOW << "Server is listening on address:" << BLUE << std::endl;
+	for (std::string host : hosts) {
+		std::cout << host << std::endl;
+	}
+	std::cout << YELLOW << "with ports:" << GREEN << std::endl;
 	for (int port : ports) {
 		std::cout <<  port << std::endl;
 	}
-	std::cout << RESET << std::endl << std::endl;
+	std::cout << RESET << std::endl;
 	EpollWait(servers);
 }
 
-void Server::CreateSocket(int port)
+void Server::CreateSocket(int port, const std::string &ip)
 {
 	// Create socket 
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -32,10 +36,21 @@ void Server::CreateSocket(int port)
 	}
 	// Bind the socket to the port
 	_address.sin_family = AF_INET;
-	_address.sin_addr.s_addr = INADDR_ANY;
 	_address.sin_port = htons(port);
+
+	// Convert ip string to binary form
+	if (ip == "localhost")
+		_address.sin_addr.s_addr = INADDR_ANY;
+	else {
+	 if (inet_pton(AF_INET, ip.c_str(), &_address.sin_addr) <= 0) {
+        std::cerr << "Error: Invalid IP address" << std::endl;
+        close(sock);
+        exit(EXIT_FAILURE);
+    }
+	}
 	if (bind(sock, (struct sockaddr*)&_address, sizeof(_address)) == -1) {
-		std::cerr << "Error: bind failed" << std::endl;
+		std::cerr << RED << "Error: bind failed" << RESET << std::endl;
+		std::cout << BLUE << "	Check your IP address and port" << RESET << std::endl;
 		close(sock);
 		exit(EXIT_FAILURE);
 	}

@@ -44,12 +44,7 @@ void Request::ServeErrorPage(int error_code) {
 		</html>
 	)";
 
-    _response += _http_version + " " + getStatusMessage(error_code);
-    _response += CONTYPE_HTML;
-    _response += CONTENT_LENGTH + std::to_string(fallback_content.size()) + "\r\n";
-     _response += "Date: " + getCurrentTimeHttpFormat() + "\r\n";
-    _response += "Server: " + _config.server_name + "\r\n\r\n";
-    _response += fallback_content;
+    responseHeader(fallback_content, getStatusMessage(error_code));
 
     WriteClient::safeWriteToClient(_client_fd, _response);
 }

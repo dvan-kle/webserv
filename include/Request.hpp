@@ -58,7 +58,6 @@ public:
     
     void responseHeader(std::string htmlContent, const std::string status_code);
     std::string unchunkRequestBody(const std::string &buffer);
-    std::string getCurrentTimeHttpFormat();
     std::string getStatusMessage(int statuscode);
 
     ssize_t convertMaxBodySize(const std::string &input);
@@ -77,3 +76,5 @@ public:
 
     void sendRedirectResponse(const std::string &redirection_url, int return_code);
 };
+
+    std::string getCurrentTimeHttpFormat();

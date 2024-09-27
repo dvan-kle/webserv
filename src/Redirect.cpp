@@ -1,4 +1,5 @@
 #include "../include/Redirect.hpp"
+#include "../include/Request.hpp"
 #include "../include/WriteClient.hpp"
 
 void Redirect::sendRedirectResponse(int client_fd, const std::string& http_version, const std::string& redirection_url, int return_code, const std::string& server_name) {
@@ -20,9 +21,10 @@ void Redirect::sendRedirectResponse(int client_fd, const std::string& http_versi
     // Build the HTTP response
     std::string response = http_version + " " + status_line + "\r\n";
     response += "Location: " + redirection_url + "\r\n";
+	response += "Content-Type: text/html\r\n";
     response += "Content-Length: 0\r\n";
-    response += "Server: " + server_name + "\r\n";
-    response += "\r\n";
+	response += "Date: " + getCurrentTimeHttpFormat() + "\r\n";
+    response += "Server: " + server_name + "\r\n\r\n";
 
     WriteClient::safeWriteToClient(client_fd, response);
 }

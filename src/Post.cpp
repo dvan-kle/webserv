@@ -269,10 +269,7 @@ void Request::handleUnsupportedContentType() {
 // Generic function to send HTML response
 void Request::sendHtmlResponse(const std::string &htmlContent)
 {
-    _response += _http_version + " " + HTTP_200 + CONTYPE_HTML;
-    _response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n\r\n";
-    _response += htmlContent;
-
+    responseHeader(htmlContent, HTTP_200);
     WriteClient::safeWriteToClient(_client_fd, _response);
 }
 

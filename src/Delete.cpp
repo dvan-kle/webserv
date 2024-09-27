@@ -72,16 +72,13 @@ void Request::DeleteResponse() {
     if (std::remove(fileToDelete.c_str()) == 0) {
         // File successfully deleted
         std::string successMessage = "<html><body><h1>File deleted successfully!</h1></body></html>";
-        _response += _http_version + " " + HTTP_200 + CONTYPE_HTML;
-        _response += CONTENT_LENGTH + std::to_string(successMessage.size()) + "\r\n\r\n";
-        _response += successMessage;
+        responseHeader(successMessage, HTTP_200);
     } else {
-        // File could not be deleted (e.g., permission issues)
-        std::cerr << "Error: Unable to delete file: " << fileToDelete << std::endl;
-        std::string errorMessage = "<html><body><h1>500 Internal Server Error</h1><p>Unable to delete the requested file.</p></body></html>";
-        _response += _http_version + " 500 Internal Server Error\r\nContent-Type: text/html\r\n";
-        _response += CONTENT_LENGTH + std::to_string(errorMessage.size()) + "\r\n\r\n";
-        _response += errorMessage;
+        // show file not found or unable to delete error
+        std::cerr << "Error: File not found or unable to delete: " << fileToDelete << std::endl;
+        std::string errorMessage = "<html><body><h1>404 Not Found</h1><p>The requested file was not found or could not be deleted.</p></body></html>";
+        responseHeader(errorMessage, HTTP_404);
+
     }
 
     // Send the response to the client

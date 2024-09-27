@@ -169,8 +169,8 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
             close(pipeFd[0]);
 
             // Send the CGI output as the HTTP response
-            std::string responseString = _http_version + " 200 OK\r\nContent-Type: text/html\r\n\r\n" + response;
-            WriteClient::safeWriteToClient(_client_fd, responseString);
+			responseHeader(response, HTTP_200);
+            WriteClient::safeWriteToClient(_client_fd, _response);
         }
     } catch (const std::runtime_error &e) {
         std::cerr << "CGI runtime error: " << e.what() << std::endl;
