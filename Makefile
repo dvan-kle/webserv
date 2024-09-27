@@ -1,6 +1,6 @@
 NAME = webserv
 CC = c++
-CFLAGS = -std=c++20 -Wall -Wextra -Werror -g
+CFLAGS = -std=c++20 -g
 BUILD_DIR = build
 SRC_DIR = src
 INC_DIR = include

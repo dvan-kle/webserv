@@ -161,20 +161,6 @@ void Request::responseHeader(std::string htmlContent, const std::string status_c
 	_response += htmlContent;
 }
 
-std::string Request::getCurrentTimeHttpFormat()
-{
-    // Get the current time
-    std::time_t now = std::time(nullptr);
-
-    std::tm *gmt_time = std::gmtime(&now);
-    std::ostringstream ss;
-
-    // Format the time according to HTTP date standard (RFC 7231)
-    // Example: "Tue, 17 Sep 2024 16:04:55 GMT"
-    ss << std::put_time(gmt_time, "%a, %d %b %Y %H:%M:%S GMT");
-
-    return ss.str();
-}
 
 std::string Request::getStatusMessage(int statuscode)
 {
@@ -220,4 +206,19 @@ bool Request::isMethodAllowed(LocationConfig* location, const std::string& metho
         return true;  // Allow all methods if none are specified (We need to check if this is even good according subject)
     }
     return std::find(location->methods.begin(), location->methods.end(), method) != location->methods.end();
+}
+
+std::string getCurrentTimeHttpFormat()
+{
+    // Get the current time
+    std::time_t now = std::time(nullptr);
+
+    std::tm *gmt_time = std::gmtime(&now);
+    std::ostringstream ss;
+
+    // Format the time according to HTTP date standard (RFC 7231)
+    // Example: "Tue, 17 Sep 2024 16:04:55 GMT"
+    ss << std::put_time(gmt_time, "%a, %d %b %Y %H:%M:%S GMT");
+
+    return ss.str();
 }
