@@ -61,9 +61,7 @@ void Request::DeleteResponse() {
     if (stat(fileToDelete.c_str(), &buffer) != 0) {
         std::cerr << "Error: File not found: " << fileToDelete << std::endl;
         std::string errorMessage = "<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>";
-        _response += _http_version + " 404 Not Found\r\nContent-Type: text/html\r\n";
-        _response += CONTENT_LENGTH + std::to_string(errorMessage.size()) + "\r\n\r\n";
-        _response += errorMessage;
+        responseHeader(errorMessage, HTTP_404);  // Use responseHeader for error response
         WriteClient::safeWriteToClient(_client_fd, _response);
         return;
     }
