@@ -1,7 +1,7 @@
 {
 	"servers": [
 		{
-			"listen_host": "127.0.0.0",
+			"listen_host": "0.0.0.0",
 			"listen_port": 8001,
 			"server_name": "myserver",
 			"error_pages": {
