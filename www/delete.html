@@ -42,7 +42,8 @@
             const filename = document.getElementById('filename').value;
             const responseMessage = document.getElementById('responseMessage');
 
-            fetch(`/${filename}`, {
+            // Ensure we are sending the request to the /upload path
+            fetch(`/upload/${filename}`, {
                 method: 'DELETE'
             }).then(response => {
                 if (response.ok) {

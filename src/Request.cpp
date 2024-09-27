@@ -203,17 +203,23 @@ LocationConfig* Request::findLocation(const std::string& url) {
     LocationConfig* best_match = nullptr;
     size_t best_match_length = 0;
 
+    // Iterate through the available locations in the server configuration
     for (auto& location : _config.locations) {
-        if (url.find(location.path) == 0) {  // Match the path prefix
+        // Only match if the URL starts with the location's path
+        if (url.find(location.path) == 0) {
             size_t path_length = location.path.length();
+            // Prioritize the longest matching path (most specific)
             if (path_length > best_match_length) {
                 best_match = &location;
                 best_match_length = path_length;
             }
         }
     }
-    return best_match;  // Return the best matching location
+
+    return best_match;  // Return the best matching location (most specific)
 }
+
+
 
 bool Request::isMethodAllowed(LocationConfig* location, const std::string& method) {
     if (location->methods.empty()) {
