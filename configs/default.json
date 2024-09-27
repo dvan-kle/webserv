@@ -26,10 +26,9 @@
 					"autoindex": true
 				},
 				{
-					"path": "/uploads",
-					"methods": ["POST"],
-					"root": "/var/www/uploads",
-					"upload_path": "/var/www/uploads"
+					"path": "/upload",
+					"methods": ["POST", "GET", "DELETE"],
+					"upload_path": "uploads"
 				},
 				{
 					"path": "/redirect",

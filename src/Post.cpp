@@ -1,6 +1,25 @@
 #include "../include/Request.hpp"
 #include "../include/WriteClient.hpp"
 
+// Helper function to get absolute path from a relative or absolute one
+std::string getAbsolutePath(const std::string &path) {
+    char absPath[PATH_MAX];
+
+    // If the path starts with "/", it's already absolute, return it as is
+    if (path[0] == '/') {
+        return path;
+    }
+
+    // Otherwise, treat it as relative to the current working directory
+    if (realpath(".", absPath) == nullptr) {
+        std::cerr << "Error resolving current working directory!" << std::endl;
+        return path;  // Return the original path if we can't resolve the current directory
+    }
+
+    // Return the combined absolute path for relative paths
+    return std::string(absPath) + "/" + path;
+}
+
 size_t parseBodySize(const std::string& size_str) {
     size_t multiplier = 1;
     std::string number_part;
@@ -140,6 +159,17 @@ void Request::handleMultipartFormData(const std::string &requestBody) {
     std::string line;
     std::istringstream headerStream(_headers);
 
+    // Retrieve the upload path from the location configuration
+    auto location = findLocation(_url);
+    if (location == nullptr || location->upload_path.empty()) {
+        std::cerr << "Upload path not specified in the config for the current location!" << std::endl;
+        ServeErrorPage(500);  // Internal Server Error
+        return;
+    }
+
+    // Convert upload path to absolute path if it's not absolute
+    std::string uploadDir = getAbsolutePath(location->upload_path);
+
     while (std::getline(headerStream, line) && line != "\r") {
         if (line.find("Content-Type: multipart/form-data; boundary=") != std::string::npos) {
             size_t boundaryStart = line.find("boundary=") + 9;
@@ -205,10 +235,8 @@ void Request::handleMultipartFormData(const std::string &requestBody) {
         // Extract the content between the boundaries (file content)
         std::string fileContent = requestBody.substr(startPos, nextBoundary - startPos - 2);
 
-        // Save the file to the "uploads" directory
-        std::string uploadDir = "uploads";
+        // Ensure the uploads directory exists (recursively creates nested directories)
         createDir(uploadDir);
-        // Ensure the uploads directory exists
 
         std::string filePath = uploadDir + "/" + filename;
         std::ofstream outFile(filePath, std::ios::binary);
@@ -230,6 +258,8 @@ void Request::handleMultipartFormData(const std::string &requestBody) {
     sendHtmlResponse(htmlContent);
 }
 
+
+
 // Handling unsupported content types
 void Request::handleUnsupportedContentType() {
     std::string htmlContent = "<html><body><h1>Unsupported content type!</h1></body></html>";
@@ -243,14 +273,29 @@ void Request::sendHtmlResponse(const std::string &htmlContent)
     WriteClient::safeWriteToClient(_client_fd, _response);
 }
 
-// if the given directory doesnt exist, it tries to create it
-void Request::createDir(const std::string &name) {
+// Function to create directories recursively
+void Request::createDir(const std::string &path) {
     struct stat st;
-    memset(&st, 0, sizeof(st));
-    if (stat(name.c_str(), &st) == -1) {
-        if (mkdir(name.c_str(), 0700) == -1) {
-            std::cerr << "Error creating directory: " << name << std::endl;
-            // need to handle the error here!!
+    std::string currentPath = "";
+    std::istringstream pathStream(path);
+    std::string directory;
+
+    // If the path is absolute, start building from the root "/"
+    if (path[0] == '/') {
+        currentPath = "/";
+    }
+
+    // Create each directory in the path, handling both absolute and relative paths
+    while (std::getline(pathStream, directory, '/')) {
+        if (!directory.empty()) {
+            currentPath += directory + "/";
+            if (stat(currentPath.c_str(), &st) == -1) {
+                if (mkdir(currentPath.c_str(), 0755) == -1) {  // Use 0755 for directories
+                    std::cerr << "Error creating directory: " << currentPath << " - " << strerror(errno) << std::endl;
+                    ServeErrorPage(500);  // Internal Server Error
+                    return;
+                }
+            }
         }
     }
 }
