@@ -22,7 +22,7 @@ std::vector<std::string> ParseHosts(std::vector<ServerConfig> servers) {
 
 int main(int argc, char **argv) {
     if (argc != 2) {
-        std::cout << "Usage: " + std::string(argv[0]) + " <config_file>" << std::endl;
+        std::cout << RED <<  "Usage: " + std::string(argv[0]) + " <config_file>" << RESET << std::endl;
         return 1;
     }
 
