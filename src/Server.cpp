@@ -1,10 +1,11 @@
 #include "../include/Server.hpp"
 #include "../include/Request.hpp"
 
-Server::Server(const std::vector<int> &ports, const std::vector<ServerConfig> &servers)
+Server::Server(const std::vector<int> &ports, const std::vector<std::string> &hosts, const std::vector<ServerConfig> &servers)
 {
-	for (const auto &port : ports) {
-		CreateSocket(port);
+	for (size_t i = 0; i < ports.size(); ++i) {
+		std::cout << "Creating socket for port " << ports[i] << " and host " << hosts[i] << std::endl;
+		CreateSocket(ports[i], hosts[i]);
 	}
 	EpollCreate();
 	std::cout << YELLOW << "Server is listening with address " << inet_ntoa(_address.sin_addr) << " on ports: " << GREEN << std::endl << std::endl;
@@ -15,7 +16,7 @@ Server::Server(const std::vector<int> &ports, const std::vector<ServerConfig> &s
 	EpollWait(servers);
 }
 
-void Server::CreateSocket(int port)
+void Server::CreateSocket(int port, const std::string &ip)
 {
 	// Create socket 
 	int sock = socket(AF_INET, SOCK_STREAM, 0);
