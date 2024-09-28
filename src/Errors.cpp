@@ -5,7 +5,7 @@ void Request::ServeErrorPage(int error_code) {
     // Check if the error code has a corresponding page in the configuration
     auto it = _config.error_pages.find(error_code);
     if (it != _config.error_pages.end()) {
-        std::string error_page_path = WWW_FOLD + it->second; // Use the exact path as defined in JSON config
+        std::string error_page_path = it->second;  // Use the exact path as defined in JSON config
         std::ifstream ifstr(error_page_path, std::ios::binary);
         
         // If the custom error page exists, serve it
