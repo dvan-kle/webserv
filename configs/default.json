@@ -20,14 +20,16 @@
 			"locations": [
 				{
 					"path": "/",
-					"methods": ["GET", "POST", "DELETE"],
-					"root": "/var/www/html",
+					"methods": ["GET"],
+					"root": "www",
 					"index": "index.html",
 					"autoindex": true
 				},
 				{
 					"path": "/upload",
 					"methods": ["POST", "GET", "DELETE"],
+					"root": "www",
+					"index": "post.html",
 					"upload_path": "uploads"
 				},
 				{
@@ -35,13 +37,13 @@
 					"methods": ["GET", "HEAD"],
 					"redirection": "http://nu.nl",
 					"return_code": 301
-				},				
+				},
                 {
                     "path": "/cgi-bin",
                     "methods": ["GET", "POST"],
                     "cgi_extension": [".py", ".sh", ".cgi"],
                     "cgi_path": ["/usr/bin/python3", "/bin/bash", "/bin/bash"],
-                    "root": "/cgi-bin"
+                    "root": "cgi-bin"
                 }
 			]
 		}

@@ -6,6 +6,12 @@
 #include "../include/BodyParser.hpp"
 #include "../include/WriteClient.hpp"
 
+bool hasFileExtension(const std::string& url) {
+    // Check if the URL contains a file extension (like .html, .js, .css)
+    static const std::regex fileExtensionRegex(R"(\.[a-zA-Z0-9]+$)");
+    return std::regex_search(url, fileExtensionRegex);
+}
+
 Request::Request(int client_fd, ServerConfig server) : _client_fd(client_fd), _config(server)
 {
     // Use the HeaderParser to read headers and the initial body content
@@ -99,62 +105,68 @@ void Request::SendResponse(const std::string &requestBody) {
 
 
 void Request::GetResponse() {
-    std::string filePath = WWW_FOLD + _url;
-    struct stat pathStat;
-    stat(filePath.c_str(), &pathStat);
+    auto location = findLocation(_url);
 
-    if (S_ISDIR(pathStat.st_mode)) {
-        auto location = findLocation(_url);
-        if (location != nullptr) {
-            std::string indexFilePath = filePath + "/" + location->index;
-            struct stat indexStat;
-            if (stat(indexFilePath.c_str(), &indexStat) == 0 && S_ISREG(indexStat.st_mode)) {
-                filePath = indexFilePath;
-            } else if (location->autoindex) {
-                std::string host = _config.listen_host;
-                int port = _config.listen_port;
-                std::string dirListing = AutoIndex::generateDirectoryListing(filePath, _url, host, port);
-                responseHeader(dirListing, HTTP_200);
-                WriteClient::safeWriteToClient(_client_fd, _response);
-                return;
-            } else {
-                ServeErrorPage(403);
-                return;
-            }
-        }
+    if (location == nullptr) {
+        ServeErrorPage(404);  // Return 404 if no matching location is found
+        return;
     }
 
-    // Serve the requested file (or index file in the case of a directory)
+    // Check if the URL maps to a file or directory and construct the file path
+    std::string filePath = location->root;
+    if (hasFileExtension(_url)) {
+        // If the URL is a file (e.g., upload.html), append the URL to the root directory
+        filePath += _url;
+    } else {
+        // If the URL maps to a directory (e.g., /upload), serve the index file (post.html)
+        filePath += "/" + location->index;
+    }
+
+    // Check if the file exists
+    struct stat pathStat;
+    if (stat(filePath.c_str(), &pathStat) == -1 || !S_ISREG(pathStat.st_mode)) {
+        ServeErrorPage(404);  // File not found
+        return;
+    }
+
+    // Serve the requested file
     std::ifstream ifstr(filePath, std::ios::binary);
     if (!ifstr) {
         ServeErrorPage(404);  // File Not Found
         return;
     }
 
-    std::string htmlContent((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
+    std::string content((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
+    responseHeader(content, HTTP_200);
 
-    responseHeader(htmlContent, HTTP_200);
-
-    // If it's a HEAD request, do not include the body
+    // If it's a HEAD request, omit the body
     if (_method == "HEAD") {
-        // Remove the body from the response
         _response = _response.substr(0, _response.find("\r\n\r\n") + 4);
     } else {
-        // Append the body for GET requests
-        _response += htmlContent;
+        _response += content;
     }
 
     WriteClient::safeWriteToClient(_client_fd, _response);
 }
 
 
+
+
+
 void Request::responseHeader(std::string htmlContent, const std::string status_code)
 {
     _response += _http_version + " " + status_code;
-	if (_url.find(".css") != std::string::npos)
-		_response += CONTYPE_CSS;
-	else
-		_response += CONTYPE_HTML;
+
+    if (_url.find(".css") != std::string::npos) {
+        _response += CONTYPE_CSS;
+    } else if (_url.find(".js") != std::string::npos) {
+        _response += "Content-Type: application/javascript\r\n";
+    } else if (_url.find(".json") != std::string::npos) {
+        _response += "Content-Type: application/json\r\n";
+    } else {
+        _response += CONTYPE_HTML;
+    }
+
 	_response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n";
     _response += "Date: " + getCurrentTimeHttpFormat() + "\r\n";
     _response += "Server: " + _config.server_name  + "\r\n\r\n";
@@ -191,10 +203,8 @@ LocationConfig* Request::findLocation(const std::string& url) {
 
     // Iterate through the available locations in the server configuration
     for (auto& location : _config.locations) {
-        // Only match if the URL starts with the location's path
         if (url.find(location.path) == 0) {
             size_t path_length = location.path.length();
-            // Prioritize the longest matching path (most specific)
             if (path_length > best_match_length) {
                 best_match = &location;
                 best_match_length = path_length;
@@ -202,8 +212,20 @@ LocationConfig* Request::findLocation(const std::string& url) {
         }
     }
 
-    return best_match;  // Return the best matching location (most specific)
+    // Check if the matched location has CGI capabilities
+    if (best_match && !best_match->cgi_extension.empty() && !best_match->cgi_path.empty()) {
+        // Ensure the location has a root defined to serve CGI
+        if (best_match->root.empty()) {
+            std::cerr << "CGI request failed: No valid root defined for " << best_match->path << std::endl;
+            return nullptr;
+        }
+    }
+
+    return best_match;
 }
+
+
+
 
 
 
