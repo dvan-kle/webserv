@@ -21,7 +21,7 @@
 				{
 					"path": "/",
 					"methods": ["GET", "POST", "DELETE"],
-					"root": "/var/www/html",
+					"root": "www",
 					"index": "index.html",
 					"autoindex": true
 				},
