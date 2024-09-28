@@ -14,7 +14,7 @@
     <!-- Navigation Bar -->
     <nav>
         <a href="index.html">GET</a>
-        <a href="upload.html">POST</a>
+        <a href="post.html">POST</a>
         <a href="delete.html">DELETE</a>
         <a href="cgi.html">CGI</a>
     </nav>
@@ -27,23 +27,23 @@
 
             <div class="cgi-scripts">
                 <!-- GET forms -->
-                <form action="cgi-bin/test.py" method="GET">
+                <form action="scripts/test.py" method="GET">
                     <button type="submit">Execute test.py (GET)</button>
                 </form>
-                <form action="cgi-bin/test.sh" method="GET">
+                <form action="scripts/test.sh" method="GET">
                     <button type="submit">Execute test.sh (GET)</button>
                 </form>
-                <form action="cgi-bin/test.cgi" method="GET">
+                <form action="scripts/test.cgi" method="GET">
                     <button type="submit">Execute test.cgi (GET)</button>
                 </form>
-                <form action="cgi-bin/timeout.py" method="GET">
+                <form action="scripts/timeout.py" method="GET">
                     <button type="submit">Execute timeout.py (GET)</button>
                 </form>
 
                 <!-- POST forms -->
                 <h3>Execute CGI Scripts with POST</h3>
 
-                <form action="cgi-bin/test.py" method="POST">
+                <form action="scripts/test.py" method="POST">
                     <label for="name">Name:</label>
                     <input type="text" id="name" name="name" required><br>
                     <label for="age">Age:</label>

@@ -14,8 +14,6 @@ const std::string HTTP_500 = "500 Internal Server Error\r\n";
 const std::string CONTYPE_HTML = "Content-Type: text/html\r\n";
 const std::string CONTYPE_CSS = "Content-Type: text/css\r\n";
 const std::string CONTENT_LENGTH = "Content-Length: ";
-const std::string ERROR_FOLD = "error_pages";
-const std::string WWW_FOLD = "www/";
 
 class Request
 {

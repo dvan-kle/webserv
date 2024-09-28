@@ -28,6 +28,7 @@
 #include <dirent.h>
 #include <memory>
 #include <unordered_set>
+#include <regex>
 
 
 #define RESET   "\033[0m"

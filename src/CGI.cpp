@@ -21,7 +21,7 @@ bool Request::isCgiRequest(std::string path) {
                 }
             }
             std::cerr << "Unsupported extension: " << ext << std::endl;
-            ServeErrorPage(415);
+            ServeErrorPage(415);  // Unsupported Media Type
             return false;
         }
     }
@@ -31,10 +31,22 @@ bool Request::isCgiRequest(std::string path) {
 
 void Request::executeCGI(std::string path, std::string method, std::string body) {
     try {
+        LocationConfig* location = findLocation(_url);
+        if (location == nullptr || location->root.empty()) {
+            std::cerr << "CGI request failed: No valid location or root defined for " << _url << std::endl;
+            ServeErrorPage(404);  // No valid root for the CGI location
+            return;
+        }
+
         // Remove query string from the path (if any)
         size_t queryPos = path.find("?");
         if (queryPos != std::string::npos) {
             path = path.substr(0, queryPos);  // Remove query string
+        }
+
+        // Strip the location `path` from the URL to get the script's relative path
+        if (path.find(location->path) == 0) {
+            path = path.substr(location->path.length());  // Remove the `/scripts` part
         }
 
         // Ensure the path does not have an extra '/' at the beginning
@@ -42,10 +54,12 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
             path = path.substr(1);  // Remove leading '/'
         }
 
+        // Construct the full script path using the root
+        std::string scriptPath = location->root + "/" + path;
+
         // Set up environment variables for CGI
         std::string contentLength = std::to_string(body.length());
         std::string requestMethod = method;
-        std::string scriptName = path;
         std::string queryString = "";
 
         // Handle the query string for GET requests
@@ -56,7 +70,7 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
         char *const envp[] = {
             (char *)("REQUEST_METHOD=" + requestMethod).c_str(),
             (char *)("CONTENT_LENGTH=" + contentLength).c_str(),
-            (char *)("SCRIPT_NAME=" + scriptName).c_str(),
+            (char *)("SCRIPT_NAME=" + scriptPath).c_str(),
             (char *)("QUERY_STRING=" + queryString).c_str(),
             NULL
         };
@@ -90,21 +104,20 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
             alarm(5);  // Kill process if it exceeds 5 seconds
 
             // Use the `cgi_path` based on the file extension
-            LocationConfig* location = findLocation(_url);
-            if (location != nullptr && !location->cgi_path.empty() && !location->cgi_extension.empty()) {
+            if (!location->cgi_path.empty() && !location->cgi_extension.empty()) {
                 // Get the file extension
-                std::string::size_type dotPos = path.find_last_of('.');
+                std::string::size_type dotPos = scriptPath.find_last_of('.');
                 if (dotPos != std::string::npos) {
-                    std::string ext = path.substr(dotPos);
+                    std::string ext = scriptPath.substr(dotPos);
 
                     // Find the matching CGI interpreter based on the extension
                     bool executed = false;
                     for (size_t i = 0; i < location->cgi_extension.size(); ++i) {
                         if (ext == location->cgi_extension[i]) {
-                            std::cerr << "Attempting to execute CGI script: " << path << " with cgi_path: " << location->cgi_path[i] << std::endl;
+                            std::cerr << "Attempting to execute CGI script: " << scriptPath << " with cgi_path: " << location->cgi_path[i] << std::endl;
 
                             // Execute CGI using the matched interpreter
-                            char *const cgiExecArgv[] = {(char *)location->cgi_path[i].c_str(), (char *)path.c_str(), NULL};
+                            char *const cgiExecArgv[] = {(char *)location->cgi_path[i].c_str(), (char *)scriptPath.c_str(), NULL};
 
                             if (execve(location->cgi_path[i].c_str(), cgiExecArgv, envp) != -1) {
                                 executed = true;
@@ -119,7 +132,7 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
                         exit(1);
                     }
                 } else {
-                    std::cerr << "Failed to determine file extension for " << path << std::endl;
+                    std::cerr << "Failed to determine file extension for " << scriptPath << std::endl;
                     ServeErrorPage(500);
                     exit(1);
                 }
@@ -169,7 +182,7 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
             close(pipeFd[0]);
 
             // Send the CGI output as the HTTP response
-			responseHeader(response, HTTP_200);
+            responseHeader(response, HTTP_200);
             WriteClient::safeWriteToClient(_client_fd, _response);
         }
     } catch (const std::runtime_error &e) {
