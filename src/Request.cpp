@@ -4,54 +4,44 @@
 #include "../include/AutoIndex.hpp"
 #include "../include/HeaderParser.hpp"
 #include "../include/BodyParser.hpp"
-#include "../include/WriteClient.hpp"
+
+#include <regex>
+#include <fstream>
+#include <sstream>
+#include <ctime>
+#include <iomanip>
+#include <algorithm>
 
 bool hasFileExtension(const std::string& url) {
-    // Check if the URL contains a file extension (like .html, .js, .css)
     static const std::regex fileExtensionRegex(R"(\.[a-zA-Z0-9]+$)");
     return std::regex_search(url, fileExtensionRegex);
 }
 
-Request::Request(int client_fd, ServerConfig server) : _client_fd(client_fd), _config(server)
+Request::Request(ServerConfig server, const std::string &request_data)
+    : _config(server), _request(request_data)
 {
-    // Use the HeaderParser to read headers and the initial body content
-    std::pair<std::string, std::string> headersAndBody = HeaderParser::readHeaders(_client_fd);
-    _headers = headersAndBody.first;
-    _body = headersAndBody.second;
-
-    // Handle transfer encoding or content length
-    if (HeaderParser::isChunkedEncoding(_headers)) {
-        _body = BodyParser::unchunkRequestBody(_body);  // Handle chunked body
-    } else {
-        size_t content_length = HeaderParser::getContentLength(_headers);
-        char buffer[1024];
-        int bytes_read;
-
-        while (_body.size() < content_length) {
-            bytes_read = read(_client_fd, buffer, sizeof(buffer));
-            if (bytes_read == -1) {
-                std::cerr << "Error: read failed" << std::endl;
-                close(_client_fd);
-                exit(EXIT_FAILURE);
-            } else if (bytes_read == 0) {
-                break;
-            }
-            _body.append(buffer, bytes_read);
-        }
-    }
+    // No socket I/O in the constructor
 }
 
-
-// Destructor
 Request::~Request() {
-    close(_client_fd);
+    // Destructor logic if needed
 }
 
 void Request::ParseRequest() {
-    std::string::size_type pos = _headers.find("\r\n");
+    // Use HeaderParser to parse headers and body
+    std::pair<std::string, std::string> headersAndBody = HeaderParser::parseHeaders(_request);
+    _headers = headersAndBody.first;
+    _body = headersAndBody.second;
 
-    if (pos != std::string::npos) {
-        std::string requestLine = _headers.substr(0, pos);
+    if (_headers.empty()) {
+        std::cerr << "Invalid HTTP request: Headers incomplete or missing" << std::endl;
+        ServeErrorPage(400);  // Bad Request
+        return;
+    }
+
+    size_t line_end_pos = _headers.find("\r\n");
+    if (line_end_pos != std::string::npos) {
+        std::string requestLine = _headers.substr(0, line_end_pos);
         ParseLine(requestLine);
 
         auto location = findLocation(_url);
@@ -61,7 +51,7 @@ void Request::ParseRequest() {
         }
 
         if (!location->redirection.empty()) {
-            Redirect::sendRedirectResponse(_client_fd, _http_version, location->redirection, location->return_code, _config.server_name);
+            sendRedirectResponse(location->redirection, location->return_code);
             return;
         }
 
@@ -71,18 +61,18 @@ void Request::ParseRequest() {
             SendResponse(_body);
         }
     } else {
-        std::cerr << "Invalid HTTP request" << std::endl;
+        std::cerr << "Invalid HTTP request line" << std::endl;
         ServeErrorPage(400);  // Bad Request
     }
 }
 
 // Parse the first line of the HTTP request
-void Request::ParseLine(std::string line) {
-    std::string::size_type pos = 0;
-    std::string::size_type prev = 0;
+void Request::ParseLine(const std::string &line) {
+    size_t pos = 0;
+    size_t prev = 0;
 
     pos = line.find(" ");
-    _method = line.substr(prev, pos);
+    _method = line.substr(prev, pos - prev);
     prev = pos + 1;
 
     pos = line.find(" ", prev);
@@ -114,6 +104,8 @@ void Request::SendResponse(const std::string &requestBody) {
     }
 }
 
+// Implement other methods, ensuring no direct socket I/O
+// For example, in GetResponse:
 
 void Request::GetResponse() {
     auto location = findLocation(_url);
@@ -179,23 +171,17 @@ void Request::GetResponse() {
 
     // If it's a HEAD request, omit the body
     if (_method == "HEAD") {
-        _response = _response.substr(0, _response.find("\r\n\r\n") + 4);
+        // Do not include the body
+    } else {
+        _response += content;  // Include content in the response
     }
-
-    // Send the response to the client
-    WriteClient::safeWriteToClient(_client_fd, _response);
 }
 
-
-
-
-
-
-
-void Request::responseHeader(const std::string &htmlContent, const std::string &status_code)
+void Request::responseHeader(const std::string &content, const std::string &status_code)
 {
     _response = _http_version + " " + status_code + "\r\n";
 
+    // Determine Content-Type based on URL or default to text/html
     if (_url.find(".css") != std::string::npos) {
         _response += "Content-Type: text/css\r\n";
     } else if (_url.find(".js") != std::string::npos) {
@@ -206,12 +192,11 @@ void Request::responseHeader(const std::string &htmlContent, const std::string &
         _response += "Content-Type: text/html\r\n";
     }
 
-    _response += "Content-Length: " + std::to_string(htmlContent.size()) + "\r\n";
+    _response += "Content-Length: " + std::to_string(content.size()) + "\r\n";
     _response += "Date: " + getCurrentTimeHttpFormat() + "\r\n";
     _response += "Server: " + _config.server_name  + "\r\n\r\n";
-    _response += htmlContent;  // Include htmlContent here
+    // Note: Do not append the content here; it is appended separately
 }
-
 
 
 std::string Request::getStatusMessage(int statuscode)
@@ -264,16 +249,15 @@ LocationConfig* Request::findLocation(const std::string& url) {
     return best_match;
 }
 
-
-
-
-
-
 bool Request::isMethodAllowed(LocationConfig* location, const std::string& method) {
     if (location->methods.empty()) {
-        return true;  // Allow all methods if none are specified (We need to check if this is even good according subject)
+        return true;  // Allow all methods if none are specified
     }
     return std::find(location->methods.begin(), location->methods.end(), method) != location->methods.end();
+}
+
+void Request::sendRedirectResponse(const std::string &redirection_url, int return_code) {
+    _response = Redirect::generateRedirectResponse(_http_version, redirection_url, return_code, _config.server_name);
 }
 
 std::string getCurrentTimeHttpFormat()
@@ -285,8 +269,9 @@ std::string getCurrentTimeHttpFormat()
     std::ostringstream ss;
 
     // Format the time according to HTTP date standard (RFC 7231)
-    // Example: "Tue, 17 Sep 2024 16:04:55 GMT"
     ss << std::put_time(gmt_time, "%a, %d %b %Y %H:%M:%S GMT");
 
     return ss.str();
 }
+
+// Implement other methods as needed, ensuring no direct socket I/O

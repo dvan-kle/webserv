@@ -4,5 +4,5 @@
 
 class Redirect {
 	public:
-    	static void sendRedirectResponse(int client_fd, const std::string& http_version, const std::string& redirection_url, int return_code, const std::string& server_name);
+    	static std::string generateRedirectResponse(const std::string& http_version, const std::string& redirection_url, int return_code, const std::string& server_name);
 };

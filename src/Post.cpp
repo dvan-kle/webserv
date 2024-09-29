@@ -1,5 +1,13 @@
 #include "../include/Request.hpp"
-#include "../include/WriteClient.hpp"
+#include <sys/stat.h>
+#include <unistd.h>
+#include <limits.h>  // For PATH_MAX
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <algorithm>
+#include <cctype>
+
 
 // Helper function to get absolute path from a relative or absolute one
 std::string getAbsolutePath(const std::string &path) {
@@ -270,7 +278,7 @@ void Request::handleUnsupportedContentType() {
 void Request::sendHtmlResponse(const std::string &htmlContent)
 {
     responseHeader(htmlContent, HTTP_200);
-    WriteClient::safeWriteToClient(_client_fd, _response);
+    _response += htmlContent;
 }
 
 void Request::createDir(const std::string &path) {
@@ -299,4 +307,3 @@ void Request::createDir(const std::string &path) {
         }
     }
 }
-

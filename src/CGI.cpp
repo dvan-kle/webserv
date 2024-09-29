@@ -1,5 +1,4 @@
 #include "../include/Request.hpp"
-#include "../include/WriteClient.hpp"
 
 bool Request::isCgiRequest(std::string path) {
     LocationConfig* location = findLocation(_url);
@@ -207,6 +206,7 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
                 return;
             }
 
+            // In the parent process
             // Read CGI output
             char buffer[1024];
             std::string cgiOutput;
@@ -232,9 +232,6 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
                 _response += "\r\n";
                 _response += cgiOutput;
             }
-
-            // Send the response to the client
-            WriteClient::safeWriteToClient(_client_fd, _response);
         }
     } catch (const std::runtime_error &e) {
         std::cerr << "CGI runtime error: " << e.what() << std::endl;

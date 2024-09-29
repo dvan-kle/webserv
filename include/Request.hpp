@@ -2,7 +2,7 @@
 
 #include "JsonParser.hpp"
 #include "Libaries.hpp"
-#include "JsonParser.hpp"
+#include <string>
 
 const std::string HTTP_200 = "200 OK";
 const std::string HTTP_400 = "400 Bad Request";
@@ -11,51 +11,42 @@ const std::string HTTP_404 = "404 Not Found";
 const std::string HTTP_405 = "405 Method Not Allowed";
 const std::string HTTP_413 = "413 Payload Too Large";
 const std::string HTTP_500 = "500 Internal Server Error";
-const std::string CONTYPE_HTML = "Content-Type: text/html\r\n";
-const std::string CONTYPE_CSS = "Content-Type: text/css\r\n";
-const std::string CONTENT_LENGTH = "Content-Length: ";
 
 class Request
 {
 private:
-    int _client_fd;
-    char _buffer[1024];
-    
+    ServerConfig _config;
+
     std::string _method;
     std::string _url;
     std::string _http_version;
-    
+
     std::string _request;
     std::string _response;
 
     std::string _body;
     ssize_t     _max_body_size;
 
-    std::string _headers; // Add this line
-
-    ServerConfig _config;
+    std::string _headers;
 
 public:
-    Request(int client_fd, ServerConfig server);
+    Request(ServerConfig server, const std::string &request_data);
     Request(const Request &src) = delete;
     Request &operator=(const Request &src) = delete;
     ~Request();
 
     void ParseRequest();
-    void ParseLine(std::string line);
+    void ParseLine(const std::string &line);
 
-    void SendResponse(const std::string &requestBody); // Adjusted parameter type
+    void SendResponse(const std::string &requestBody);
     void GetResponse();
-    void PostResponse(const std::string &requestBody); // Adjusted parameter type
+    void PostResponse(const std::string &requestBody);
     void DeleteResponse();
-    
-    void createDir(const std::string &name); // Adjusted parameter type
 
     void executeCGI(std::string path, std::string method, std::string body);
     bool isCgiRequest(std::string path);
-    
-    void responseHeader(const std::string &htmlContent, const std::string &status_code);
-    std::string unchunkRequestBody(const std::string &buffer);
+
+    void responseHeader(const std::string &content, const std::string &status_code);
     std::string getStatusMessage(int statuscode);
 
     ssize_t convertMaxBodySize(const std::string &input);
@@ -73,6 +64,10 @@ public:
     std::string generateDirectoryListing(const std::string& directoryPath, const std::string& host, int port);
 
     void sendRedirectResponse(const std::string &redirection_url, int return_code);
+
+    std::string getResponse() const { return _response; } // Getter for the response
+
+    void createDir(const std::string &path);
 };
 
-    std::string getCurrentTimeHttpFormat();
+std::string getCurrentTimeHttpFormat();
