@@ -1,5 +1,4 @@
 #include "../include/Request.hpp"
-#include "../include/WriteClient.hpp"
 
 bool Request::isCgiRequest(std::string path) {
     LocationConfig* location = findLocation(_url);
@@ -105,8 +104,9 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
             close(stdoutPipe[1]);
 
             if (chdir(scriptDirectory.c_str()) != 0) {
-                std::cerr << "Failed to change directory to " << scriptDirectory << std::endl;
-                exit(1);
+                // Avoid using std::cerr in child process after fork
+                write(STDERR_FILENO, "Failed to change directory\n", 27);
+                _exit(1);
             }
 
             // Find CGI interpreter
@@ -119,26 +119,28 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
                         if (ext == location->cgi_extension[i]) {
                             char *const cgiExecArgv[] = {
                                 (char *)location->cgi_path[i].c_str(),
-                                (char *)scriptName.c_str(),  // Use scriptName instead of scriptPath
+                                (char *)scriptName.c_str(),  // Use scriptName
                                 NULL
                             };
 
                             execve(location->cgi_path[i].c_str(), cgiExecArgv, envp.data());
 
-                            std::cerr << "Failed to execute CGI script" << std::endl;
-                            exit(1);
+                            // If execve returns, an error occurred
+                            write(STDERR_FILENO, "Failed to execute CGI script\n", 29);
+                            _exit(1);
                         }
                     }
 
-                    std::cerr << "No valid CGI interpreter found for extension: " << ext << std::endl;
-                    exit(1);
+                    // No valid interpreter found
+                    write(STDERR_FILENO, "No valid CGI interpreter found\n", 31);
+                    _exit(1);
                 } else {
-                    std::cerr << "Failed to determine file extension for " << scriptName << std::endl;
-                    exit(1);
+                    write(STDERR_FILENO, "Failed to determine file extension\n", 35);
+                    _exit(1);
                 }
             } else {
-                std::cerr << "No valid CGI path or extension configured" << std::endl;
-                exit(1);
+                write(STDERR_FILENO, "No valid CGI path or extension configured\n", 43);
+                _exit(1);
             }
         } else {
             // Parent process
@@ -165,14 +167,36 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
 
             close(stdinPipe[1]);  // Signal EOF to child process
 
-            // Wait for child process
+            // Implement timeout mechanism
             int status;
-            pid_t result = waitpid(pid, &status, 0);
-            if (result == -1) {
-                std::cerr << "Failed to wait for CGI process" << std::endl;
-                ServeErrorPage(500);
-                close(stdoutPipe[0]);
-                return;
+            pid_t result;
+            const int timeout_seconds = 3;  // Set your timeout duration here
+            time_t start_time = time(NULL);
+
+            while (true) {
+                result = waitpid(pid, &status, WNOHANG);
+                if (result == 0) {
+                    // Child is still running
+                    if (time(NULL) - start_time >= timeout_seconds) {
+                        // Timeout exceeded, kill child process
+                        kill(pid, SIGKILL);
+                        waitpid(pid, &status, 0);  // Wait for child to terminate
+                        std::cerr << "CGI script execution timed out" << std::endl;
+                        ServeErrorPage(504);  // Gateway Timeout
+                        close(stdoutPipe[0]);
+                        return;
+                    }
+                    usleep(10000);  // Sleep for 10 milliseconds before checking again
+                } else if (result == -1) {
+                    // Error occurred
+                    std::cerr << "Failed to wait for CGI process" << std::endl;
+                    ServeErrorPage(500);
+                    close(stdoutPipe[0]);
+                    return;
+                } else {
+                    // Child process has terminated
+                    break;
+                }
             }
 
             if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
@@ -182,6 +206,7 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
                 return;
             }
 
+            // In the parent process
             // Read CGI output
             char buffer[1024];
             std::string cgiOutput;
@@ -207,9 +232,6 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
                 _response += "\r\n";
                 _response += cgiOutput;
             }
-
-            // Send the response to the client
-            WriteClient::safeWriteToClient(_client_fd, _response);
         }
     } catch (const std::runtime_error &e) {
         std::cerr << "CGI runtime error: " << e.what() << std::endl;

@@ -1,5 +1,13 @@
 #include "../include/Request.hpp"
-#include "../include/WriteClient.hpp"
+#include <sys/stat.h>
+#include <unistd.h>
+#include <limits.h>  // For PATH_MAX
+#include <iostream>
+#include <sstream>
+#include <fstream>
+#include <algorithm>
+#include <cctype>
+
 
 // Helper function to get absolute path from a relative or absolute one
 std::string getAbsolutePath(const std::string &path) {
@@ -270,10 +278,9 @@ void Request::handleUnsupportedContentType() {
 void Request::sendHtmlResponse(const std::string &htmlContent)
 {
     responseHeader(htmlContent, HTTP_200);
-    WriteClient::safeWriteToClient(_client_fd, _response);
+    _response += htmlContent;
 }
 
-// Function to create directories recursively
 void Request::createDir(const std::string &path) {
     struct stat st;
     std::string currentPath = "";
@@ -290,8 +297,9 @@ void Request::createDir(const std::string &path) {
         if (!directory.empty()) {
             currentPath += directory + "/";
             if (stat(currentPath.c_str(), &st) == -1) {
+                // Directory doesn't exist, try creating it
                 if (mkdir(currentPath.c_str(), 0755) == -1) {  // Use 0755 for directories
-                    std::cerr << "Error creating directory: " << currentPath << " - " << strerror(errno) << std::endl;
+                    std::cerr << "Failed to create directory: " << currentPath << std::endl;
                     ServeErrorPage(500);  // Internal Server Error
                     return;
                 }

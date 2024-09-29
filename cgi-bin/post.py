@@ -5,7 +5,6 @@ import urllib.parse
 
 def main():
     # Output HTTP headers
-    print("Content-Type: text/html\n")
     
     request_method = os.environ.get('REQUEST_METHOD', 'GET')
     
