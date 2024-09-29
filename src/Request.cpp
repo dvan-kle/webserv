@@ -131,12 +131,31 @@ void Request::GetResponse() {
 
     // Check if the URL maps to a file or directory and construct the file path
     std::string filePath = location->root;
+    bool isDirectory = false;
+
     if (hasFileExtension(_url)) {
         // If the URL is a file (e.g., upload.html), append the URL to the root directory
         filePath += _url;
     } else {
-        // If the URL maps to a directory (e.g., /upload), serve the index file (e.g., index.html)
-        filePath += "/" + location->index;
+        // If the URL maps to a directory (e.g., /upload)
+        filePath += "/" + location->index; // default to index if available
+        struct stat pathStat;
+        if (stat(filePath.c_str(), &pathStat) == -1 || !S_ISREG(pathStat.st_mode)) {
+            if (location->autoindex) {
+                isDirectory = true;  // Directory without index
+                filePath = location->root + _url;  // Use directory path directly
+            } else {
+                ServeErrorPage(404);  // File not found
+                return;
+            }
+        }
+    }
+
+    // If autoindex is enabled and it's a directory, generate the directory listing
+    if (isDirectory && location->autoindex) {
+        std::string directoryListing = AutoIndex::generateDirectoryListing(filePath, _url, _config.listen_host, _config.listen_port);
+        sendHtmlResponse(directoryListing);
+        return;
     }
 
     // Check if the file exists
@@ -163,11 +182,10 @@ void Request::GetResponse() {
         _response = _response.substr(0, _response.find("\r\n\r\n") + 4);
     }
 
-    // Do not append 'content' again here
-
     // Send the response to the client
     WriteClient::safeWriteToClient(_client_fd, _response);
 }
+
 
 
 
