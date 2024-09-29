@@ -34,11 +34,10 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
         LocationConfig* location = findLocation(_url);
         if (location == nullptr || location->root.empty()) {
             std::cerr << "CGI request failed: No valid location or root defined for " << _url << std::endl;
-            ServeErrorPage(404);  // No valid root for the CGI location
+            ServeErrorPage(404);
             return;
         }
 
-        // Remove query string from the path (if any)
         size_t queryPos = path.find("?");
         std::string queryString = "";
         if (queryPos != std::string::npos) {
@@ -46,49 +45,41 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
             path = path.substr(0, queryPos);  // Remove query string
         }
 
-        // Strip the location `path` from the URL to get the script's relative path
         if (path.find(location->path) == 0) {
             path = path.substr(location->path.length());  // Remove the location path part
         }
-
-        // Ensure the path does not have an extra '/' at the beginning
-        if (path[0] == '/') {
-            path = path.substr(1);  // Remove leading '/'
+        if (!path.empty() && path[0] == '/') {
+            path = path.substr(1);
         }
 
-        // Construct the full script path using the root
         std::string scriptPath = location->root + "/" + path;
+        std::string scriptDirectory = scriptPath.substr(0, scriptPath.find_last_of('/'));
+        std::string scriptName = scriptPath.substr(scriptPath.find_last_of('/') + 1);
 
-        // Set up environment variables for CGI
         std::string contentLength = std::to_string(body.length());
         std::string requestMethod = method;
 
+        std::string contentType = "application/x-www-form-urlencoded";
+
         // Prepare environment variables
-        std::vector<std::string> envVars = {
+        std::vector<std::string> env_vars = {
             "REQUEST_METHOD=" + requestMethod,
             "CONTENT_LENGTH=" + contentLength,
-            "SCRIPT_NAME=" + scriptPath,
+            "SCRIPT_NAME=" + scriptName,
             "QUERY_STRING=" + queryString,
-            "SERVER_PROTOCOL=HTTP/1.1",
-            "GATEWAY_INTERFACE=CGI/1.1",
-            "SERVER_SOFTWARE=webserv/1.0",
-            "SERVER_NAME=" + _config.server_name,
-            "SERVER_PORT=" + std::to_string(_config.listen_port),
-            "REMOTE_ADDR=127.0.0.1"  // You may want to get the actual client IP
+            "CONTENT_TYPE=" + contentType
         };
 
-        // Convert environment variables to the format required by execve
+        // Convert std::string to char*
         std::vector<char*> envp;
-        for (size_t i = 0; i < envVars.size(); ++i) {
-            envp.push_back(const_cast<char*>(envVars[i].c_str()));
+        for (size_t i = 0; i < env_vars.size(); ++i) {
+            envp.push_back(const_cast<char*>(env_vars[i].c_str()));
         }
-        envp.push_back(NULL);  // Null-terminate the array
+        envp.push_back(NULL); // Null-terminate the array
 
-        // Set up pipes for stdin and stdout
-        int inputPipeFd[2];   // For passing the request body to the CGI script
-        int outputPipeFd[2];  // For reading the CGI script's output
-
-        if (pipe(inputPipeFd) == -1 || pipe(outputPipeFd) == -1) {
+        int stdinPipe[2];
+        int stdoutPipe[2];
+        if (pipe(stdinPipe) == -1 || pipe(stdoutPipe) == -1) {
             std::cerr << "Failed to create pipes" << std::endl;
             ServeErrorPage(500);
             return;
@@ -102,8 +93,6 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
         }
 
         if (pid == 0) {
-            // Child process: Execute the CGI script
-
             // Redirect stdin
             close(inputPipeFd[1]);           // Close unused write end
             dup2(inputPipeFd[0], STDIN_FILENO);
@@ -114,51 +103,111 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
             dup2(outputPipeFd[1], STDOUT_FILENO);
             close(outputPipeFd[1]);
 
-            // Execute CGI script
-            std::string interpreter;
-            std::string::size_type dotPos = scriptPath.find_last_of('.');
-            if (dotPos != std::string::npos) {
-                std::string ext = scriptPath.substr(dotPos);
-                for (size_t i = 0; i < location->cgi_extension.size(); ++i) {
-                    if (ext == location->cgi_extension[i]) {
-                        interpreter = location->cgi_path[i];
-                        break;
-                    }
-                }
-            }
-
-            if (interpreter.empty()) {
-                std::cerr << "No CGI interpreter found for extension" << std::endl;
+            if (chdir(scriptDirectory.c_str()) != 0) {
+                std::cerr << "Failed to change directory to " << scriptDirectory << std::endl;
+                ServeErrorPage(500);
                 exit(1);
             }
 
-            char* const args[] = {const_cast<char*>(interpreter.c_str()), const_cast<char*>(scriptPath.c_str()), NULL};
+            alarm(5);  // Prevent hanging
 
-            if (execve(interpreter.c_str(), args, envp.data()) == -1) {
-                std::cerr << "Failed to execute CGI script" << std::endl;
+            // Find CGI interpreter
+            if (!location->cgi_path.empty() && !location->cgi_extension.empty()) {
+                std::string::size_type dotPos = scriptName.find_last_of('.');
+                if (dotPos != std::string::npos) {
+                    std::string ext = scriptName.substr(dotPos);
+
+                    for (size_t i = 0; i < location->cgi_extension.size(); ++i) {
+                        if (ext == location->cgi_extension[i]) {
+                            std::cerr << "Attempting to execute CGI script: " << scriptName << " with cgi_path: " << location->cgi_path[i] << std::endl;
+
+                            char *const cgiExecArgv[] = {(char *)location->cgi_path[i].c_str(), (char *)scriptName.c_str(), NULL};
+
+                            execve(location->cgi_path[i].c_str(), cgiExecArgv, envp.data());
+
+                            std::cerr << "Failed to execute CGI script" << std::endl;
+                            ServeErrorPage(500);
+                            exit(1);
+                        }
+                    }
+
+                    std::cerr << "No valid CGI interpreter found for extension: " << ext << std::endl;
+                    ServeErrorPage(500);
+                    exit(1);
+                } else {
+                    std::cerr << "Failed to determine file extension for " << scriptName << std::endl;
+                    ServeErrorPage(500);
+                    exit(1);
+                }
+            } else {
+                std::cerr << "No valid CGI path or extension configured" << std::endl;
+                ServeErrorPage(500);
                 exit(1);
             }
         } else {
             // Parent process
+            close(stdinPipe[0]);   // Close read end of stdin pipe
+            close(stdoutPipe[1]);  // Close write end of stdout pipe
 
-            // Close unused pipe ends
-            close(inputPipeFd[0]);   // Close read end of input pipe (stdin for CGI)
-            close(outputPipeFd[1]);  // Close write end of output pipe (stdout from CGI)
+            if (method == "POST") {
+                ssize_t totalWritten = 0;
+                ssize_t bytesToWrite = body.length();
+                const char* bodyData = body.c_str();
 
-            // Write the body to the CGI's stdin
-            if (!body.empty()) {
-                write(inputPipeFd[1], body.c_str(), body.length());
+                while (totalWritten < bytesToWrite) {
+                    ssize_t bytesWritten = write(stdinPipe[1], bodyData + totalWritten, bytesToWrite - totalWritten);
+                    if (bytesWritten == -1) {
+                        std::cerr << "Failed to write to stdin pipe" << std::endl;
+                        ServeErrorPage(500);
+                        close(stdinPipe[1]);
+                        close(stdoutPipe[0]);
+                        return;
+                    }
+                    totalWritten += bytesWritten;
+                }
+            }
+
+            close(stdinPipe[1]);  // Signal EOF to child process
+
+            // Wait for child process
+            time_t startTime = time(nullptr);
+            int status;
+            pid_t result;
+
+            while (true) {
+                result = waitpid(pid, &status, WNOHANG);
+                if (result == 0 && time(nullptr) - startTime >= 5) {
+                    kill(pid, SIGKILL);
+                    waitpid(pid, &status, 0);
+                    std::cerr << "CGI script execution timed out" << std::endl;
+                    ServeErrorPage(504);
+                    close(stdoutPipe[0]);
+                    return;
+                } else if (result == -1) {
+                    std::cerr << "Failed to wait for CGI process" << std::endl;
+                    ServeErrorPage(500);
+                    close(stdoutPipe[0]);
+                    return;
+                } else if (result > 0) {
+                    if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
+                        std::cerr << "CGI script exited with status " << WEXITSTATUS(status) << std::endl;
+                        ServeErrorPage(500);
+                        close(stdoutPipe[0]);
+                        return;
+                    }
+                    break;
+                }
+                usleep(10000);  // Sleep before checking again
             }
             close(inputPipeFd[1]);  // Close write end after writing (EOF for CGI)
-
-            // Read CGI output from stdout
+            // Read CGI output
             char buffer[1024];
-            std::string cgiOutput;
-            int bytesRead;
-            while ((bytesRead = read(outputPipeFd[0], buffer, sizeof(buffer))) > 0) {
-                cgiOutput.append(buffer, bytesRead);
+            std::string response;
+            ssize_t bytesRead;
+            while ((bytesRead = read(stdoutPipe[0], buffer, sizeof(buffer))) > 0) {
+                response.append(buffer, bytesRead);
             }
-            close(outputPipeFd[0]);
+            close(stdoutPipe[0]);
 
             // Wait for the child process to finish
             int status;
