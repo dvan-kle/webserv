@@ -42,11 +42,11 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
         std::string queryString = "";
         if (queryPos != std::string::npos) {
             queryString = path.substr(queryPos + 1);
-            path = path.substr(0, queryPos);
+            path = path.substr(0, queryPos);  // Remove query string
         }
 
         if (path.find(location->path) == 0) {
-            path = path.substr(location->path.length());
+            path = path.substr(location->path.length());  // Remove the location path part
         }
         if (!path.empty() && path[0] == '/') {
             path = path.substr(1);
@@ -58,6 +58,7 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
 
         std::string contentLength = std::to_string(body.length());
         std::string requestMethod = method;
+
         std::string contentType = "application/x-www-form-urlencoded";
 
         // Prepare environment variables
@@ -92,15 +93,15 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
         }
 
         if (pid == 0) {
-            // Child process
-            close(stdinPipe[1]);   // Close write end of stdin pipe
-            close(stdoutPipe[0]);  // Close read end of stdout pipe
+            // Redirect stdin
+            close(inputPipeFd[1]);           // Close unused write end
+            dup2(inputPipeFd[0], STDIN_FILENO);
+            close(inputPipeFd[0]);
 
-            dup2(stdinPipe[0], STDIN_FILENO);
-            dup2(stdoutPipe[1], STDOUT_FILENO);
-
-            close(stdinPipe[0]);
-            close(stdoutPipe[1]);
+            // Redirect stdout
+            close(outputPipeFd[0]);          // Close unused read end
+            dup2(outputPipeFd[1], STDOUT_FILENO);
+            close(outputPipeFd[1]);
 
             if (chdir(scriptDirectory.c_str()) != 0) {
                 std::cerr << "Failed to change directory to " << scriptDirectory << std::endl;
@@ -198,7 +199,7 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
                 }
                 usleep(10000);  // Sleep before checking again
             }
-
+            close(inputPipeFd[1]);  // Close write end after writing (EOF for CGI)
             // Read CGI output
             char buffer[1024];
             std::string response;
@@ -208,8 +209,28 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
             }
             close(stdoutPipe[0]);
 
-            // Send the CGI output as the HTTP response
-            responseHeader(response, HTTP_200);
+            // Wait for the child process to finish
+            int status;
+            waitpid(pid, &status, 0);
+
+            // Separate headers and body from CGI output
+            size_t headerEndPos = cgiOutput.find("\r\n\r\n");
+            if (headerEndPos != std::string::npos) {
+                std::string cgiHeaders = cgiOutput.substr(0, headerEndPos + 4);
+                std::string cgiBody = cgiOutput.substr(headerEndPos + 4);
+
+                // Prepare the HTTP response
+                _response = _http_version + " 200 OK\r\n" + cgiHeaders + cgiBody;
+            } else {
+                // If no headers are found, send a default header
+                _response = _http_version + " 200 OK\r\n";
+                _response += "Content-Type: text/html\r\n";
+                _response += "Content-Length: " + std::to_string(cgiOutput.length()) + "\r\n";
+                _response += "\r\n";
+                _response += cgiOutput;
+            }
+
+            // Send the response to the client
             WriteClient::safeWriteToClient(_client_fd, _response);
         }
     } catch (const std::runtime_error &e) {
@@ -217,3 +238,4 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
         ServeErrorPage(500);
     }
 }
+

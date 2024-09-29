@@ -6,20 +6,26 @@ std::string BodyParser::unchunkRequestBody(const std::string& buffer) {
     std::string body;
 
     while (std::getline(stream, line)) {
-        int chunkSize;
-        std::stringstream hexStream(line);
-        hexStream >> std::hex >> chunkSize;
-        if (chunkSize == 0) {
+        if (line.empty()) continue;  // Skip empty lines
+        int chunkSize = 0;
+        std::stringstream hexStream;
+        hexStream << std::hex << line;
+        hexStream >> chunkSize;
+
+        if (chunkSize <= 0) {
+            // Read and discard any trailing headers
+            while (std::getline(stream, line) && !line.empty()) {}
             break;  // End of chunked data
         }
 
-        char* chunkData = new char[chunkSize + 1];
+        // Read the chunk data
+        char* chunkData = new char[chunkSize];
         stream.read(chunkData, chunkSize);
-        chunkData[chunkSize] = '\0';
-        body += std::string(chunkData);
+        body.append(chunkData, chunkSize);
         delete[] chunkData;
 
-        std::getline(stream, line);  // Skip the CRLF after the chunk
+        // Read the trailing CRLF after the chunk data
+        stream.ignore(2);
     }
     return body;
 }
