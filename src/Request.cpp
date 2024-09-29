@@ -41,6 +41,7 @@ Request::Request(int client_fd, ServerConfig server) : _client_fd(client_fd), _c
     }
 }
 
+
 // Destructor
 Request::~Request() {
     close(_client_fd);
@@ -89,13 +90,23 @@ void Request::ParseLine(std::string line) {
     prev = pos + 1;
 
     _http_version = line.substr(prev);
+
+    // Validate HTTP version
+    if (_http_version.empty() || (_http_version != "HTTP/1.1" && _http_version != "HTTP/1.0")) {
+        _http_version = "HTTP/1.1";  // Default to HTTP/1.1 if missing or invalid
+    }
 }
 
 void Request::SendResponse(const std::string &requestBody) {
     if (_method == "GET" || _method == "HEAD") {
         GetResponse();
     } else if (_method == "POST") {
-        PostResponse(requestBody);
+        // Check if the request is a CGI request
+        if (isCgiRequest(_url)) {
+            executeCGI(_url, _method, requestBody);
+        } else {
+            PostResponse(requestBody);
+        }
     } else if (_method == "DELETE") {
         DeleteResponse();
     } else {
@@ -112,13 +123,19 @@ void Request::GetResponse() {
         return;
     }
 
+    // Handle CGI requests in GET method
+    if (isCgiRequest(_url)) {
+        executeCGI(_url, _method, "");  // Empty body for GET requests
+        return;
+    }
+
     // Check if the URL maps to a file or directory and construct the file path
     std::string filePath = location->root;
     if (hasFileExtension(_url)) {
         // If the URL is a file (e.g., upload.html), append the URL to the root directory
         filePath += _url;
     } else {
-        // If the URL maps to a directory (e.g., /upload), serve the index file (post.html)
+        // If the URL maps to a directory (e.g., /upload), serve the index file (e.g., index.html)
         filePath += "/" + location->index;
     }
 
@@ -137,15 +154,18 @@ void Request::GetResponse() {
     }
 
     std::string content((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
+
+    // Construct the response headers and body
     responseHeader(content, HTTP_200);
 
     // If it's a HEAD request, omit the body
     if (_method == "HEAD") {
         _response = _response.substr(0, _response.find("\r\n\r\n") + 4);
-    } else {
-        _response += content;
     }
 
+    // Do not append 'content' again here
+
+    // Send the response to the client
     WriteClient::safeWriteToClient(_client_fd, _response);
 }
 
@@ -153,25 +173,27 @@ void Request::GetResponse() {
 
 
 
-void Request::responseHeader(std::string htmlContent, const std::string status_code)
+
+void Request::responseHeader(const std::string &htmlContent, const std::string &status_code)
 {
-    _response += _http_version + " " + status_code;
+    _response = _http_version + " " + status_code + "\r\n";
 
     if (_url.find(".css") != std::string::npos) {
-        _response += CONTYPE_CSS;
+        _response += "Content-Type: text/css\r\n";
     } else if (_url.find(".js") != std::string::npos) {
         _response += "Content-Type: application/javascript\r\n";
     } else if (_url.find(".json") != std::string::npos) {
         _response += "Content-Type: application/json\r\n";
     } else {
-        _response += CONTYPE_HTML;
+        _response += "Content-Type: text/html\r\n";
     }
 
-	_response += CONTENT_LENGTH + std::to_string(htmlContent.size()) + "\r\n";
+    _response += "Content-Length: " + std::to_string(htmlContent.size()) + "\r\n";
     _response += "Date: " + getCurrentTimeHttpFormat() + "\r\n";
     _response += "Server: " + _config.server_name  + "\r\n\r\n";
-	_response += htmlContent;
+    _response += htmlContent;  // Include htmlContent here
 }
+
 
 
 std::string Request::getStatusMessage(int statuscode)

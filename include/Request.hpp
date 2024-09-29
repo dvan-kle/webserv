@@ -4,13 +4,13 @@
 #include "Libaries.hpp"
 #include "JsonParser.hpp"
 
-const std::string HTTP_200 = "200 OK\r\n";
-const std::string HTTP_400 = "400 Bad Request\r\n";
-const std::string HTTP_403 = "403 Forbidden\r\n";
-const std::string HTTP_404 = "404 Not Found\r\n";
-const std::string HTTP_405 = "405 Method Not Allowed\r\n";
-const std::string HTTP_413 = "413 Payload Too Large\r\n";
-const std::string HTTP_500 = "500 Internal Server Error\r\n";
+const std::string HTTP_200 = "200 OK";
+const std::string HTTP_400 = "400 Bad Request";
+const std::string HTTP_403 = "403 Forbidden";
+const std::string HTTP_404 = "404 Not Found";
+const std::string HTTP_405 = "405 Method Not Allowed";
+const std::string HTTP_413 = "413 Payload Too Large";
+const std::string HTTP_500 = "500 Internal Server Error";
 const std::string CONTYPE_HTML = "Content-Type: text/html\r\n";
 const std::string CONTYPE_CSS = "Content-Type: text/css\r\n";
 const std::string CONTENT_LENGTH = "Content-Length: ";
@@ -54,7 +54,7 @@ public:
     void executeCGI(std::string path, std::string method, std::string body);
     bool isCgiRequest(std::string path);
     
-    void responseHeader(std::string htmlContent, const std::string status_code);
+    void responseHeader(const std::string &htmlContent, const std::string &status_code);
     std::string unchunkRequestBody(const std::string &buffer);
     std::string getStatusMessage(int statuscode);
 
