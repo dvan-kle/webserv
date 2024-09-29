@@ -273,7 +273,6 @@ void Request::sendHtmlResponse(const std::string &htmlContent)
     WriteClient::safeWriteToClient(_client_fd, _response);
 }
 
-// Function to create directories recursively
 void Request::createDir(const std::string &path) {
     struct stat st;
     std::string currentPath = "";
@@ -290,8 +289,9 @@ void Request::createDir(const std::string &path) {
         if (!directory.empty()) {
             currentPath += directory + "/";
             if (stat(currentPath.c_str(), &st) == -1) {
+                // Directory doesn't exist, try creating it
                 if (mkdir(currentPath.c_str(), 0755) == -1) {  // Use 0755 for directories
-                    std::cerr << "Error creating directory: " << currentPath << " - " << strerror(errno) << std::endl;
+                    std::cerr << "Failed to create directory: " << currentPath << std::endl;
                     ServeErrorPage(500);  // Internal Server Error
                     return;
                 }
@@ -299,3 +299,4 @@ void Request::createDir(const std::string &path) {
         }
     }
 }
+
