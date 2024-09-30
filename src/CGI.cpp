@@ -1,4 +1,5 @@
 #include "../include/Request.hpp"
+#include <iostream>  // Added for std::cout
 
 bool Request::isCgiRequest(std::string path) {
     LocationConfig* location = findLocation(_url);
@@ -215,6 +216,9 @@ void Request::executeCGI(std::string path, std::string method, std::string body)
                 cgiOutput.append(buffer, bytesRead);
             }
             close(stdoutPipe[0]);
+
+            // **Logging: Print CGI Output to Console**
+            std::cout << "CGI Script Output:\n" << cgiOutput << std::endl;
 
             // Separate headers and body from CGI output
             size_t headerEndPos = cgiOutput.find("\r\n\r\n");
