@@ -27,6 +27,13 @@
 					"autoindex": true
 				},
 				{
+					"path": "/upload",
+					"methods": ["POST", "GET", "DELETE"],
+					"root": "www",
+					"index": "post.html",
+					"upload_path": "uploads"
+				},
+				{
 					"path": "/redirect",
 					"methods": ["GET"],
 					"redirection": "http://nu.nl",

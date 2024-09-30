@@ -175,9 +175,6 @@ void Request::ParseLine(const std::string &line) {
     _url = original_url;
     NormalizeURL();
 
-    // Log the normalization process
-    std::cerr << "Original URL: " << original_url << " | Normalized URL: " << _url << std::endl;
-
     // If the URL had a trailing slash and was normalized, set a flag for redirect
     if (had_trailing_slash && _url != original_url) {
         _needs_redirect = true;

@@ -31,11 +31,9 @@ Server::Server(const std::vector<ServerConfig> &servers)
 void Server::SetNonBlocking(int sock) {
     int flags = fcntl(sock, F_GETFL, 0);
     if (flags == -1) {
-        std::cerr << "Error: fcntl F_GETFL failed" << std::endl;
         exit(EXIT_FAILURE);
     }
     if (fcntl(sock, F_SETFL, flags | O_NONBLOCK) == -1) {
-        std::cerr << "Error: fcntl F_SETFL failed" << std::endl;
         exit(EXIT_FAILURE);
     }
 }
@@ -66,14 +64,12 @@ void Server::CreateListeningSockets(const std::vector<ServerConfig> &servers)
         // Create socket for this host and port
         int sock = socket(AF_INET, SOCK_STREAM, 0);
         if (sock == -1) {
-            std::cerr << "Error: socket creation failed" << std::endl;
             exit(EXIT_FAILURE);
         }
 
         // Set socket options
         int opt = 1;
         if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
-            std::cerr << "Error: setsockopt failed" << std::endl;
             close(sock);
             exit(EXIT_FAILURE);
         }
@@ -94,14 +90,13 @@ void Server::CreateListeningSockets(const std::vector<ServerConfig> &servers)
 
         if (bind(sock, (struct sockaddr*)&_address, sizeof(_address)) == -1) {
             std::cerr << RED << "Error: bind failed for " << current.listen_host << ":" << current.listen_port << RESET << std::endl;
-            std::cout << BLUE << "  Check your IP address and port" << RESET << std::endl;
+            std::cout << BLUE << "  Check the IP address and port" << RESET << std::endl;
             close(sock);
             exit(EXIT_FAILURE);
         }
 
         // Listen for incoming connections
         if (listen(sock, 4096) == -1) {
-            std::cerr << "Error: listen failed for " << current.listen_host << ":" << current.listen_port << std::endl;
             close(sock);
             exit(EXIT_FAILURE);
         }
@@ -122,7 +117,6 @@ void Server::EpollCreate()
     // Create epoll instance
     _epoll_fd = epoll_create1(0);
     if (_epoll_fd == -1) {
-        std::cerr << "Error: epoll_create1 failed" << std::endl;
         exit(EXIT_FAILURE);
     }
 
@@ -132,7 +126,6 @@ void Server::EpollCreate()
         _event.events = EPOLLIN | EPOLLET;
         _event.data.fd = ls.sock_fd;
         if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, ls.sock_fd, &_event) == -1) {
-            std::cerr << "Error: epoll_ctl ADD failed for listening socket " << ls.sock_fd << std::endl;
             close(ls.sock_fd);
             exit(EXIT_FAILURE);
         }
@@ -146,7 +139,6 @@ void Server::EpollWait(const std::vector<ServerConfig> &servers)
         if (nfds == -1) {
             if (errno == EINTR)
                 continue; // Interrupted by signal, retry
-            std::cerr << "Error: epoll_wait failed" << std::endl;
             exit(EXIT_FAILURE);
         }
         for (int n = 0; n < nfds; ++n) {
@@ -175,7 +167,6 @@ void Server::EpollWait(const std::vector<ServerConfig> &servers)
                             // No more connections to accept
                             break;
                         } else {
-                            std::cerr << "Error: accept failed" << std::endl;
                             break;
                         }
                     }
@@ -186,7 +177,6 @@ void Server::EpollWait(const std::vector<ServerConfig> &servers)
                     _event.events = EPOLLIN | EPOLLET;
                     _event.data.fd = client_fd;
                     if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, client_fd, &_event) == -1) {
-                        std::cerr << "Error: epoll_ctl ADD failed for client " << client_fd << std::endl;
                         close(client_fd);
                         continue;
                     }
@@ -197,7 +187,7 @@ void Server::EpollWait(const std::vector<ServerConfig> &servers)
                     // Optionally, log the new connection
                     char client_ip[INET_ADDRSTRLEN];
                     inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip, INET_ADDRSTRLEN);
-                    std::cout << "Accepted connection from " << client_ip << ":" << ntohs(client_addr.sin_port) << " (fd: " << client_fd << ")" << std::endl;
+                    // std::cout << "Accepted connection from " << client_ip << ":" << ntohs(client_addr.sin_port) << " (fd: " << client_fd << ")" << std::endl;
                 }
             } else {
                 // Handle client events
@@ -205,7 +195,6 @@ void Server::EpollWait(const std::vector<ServerConfig> &servers)
                     // Find which listening socket this client is associated with
                     std::unordered_map<int, ClientContext>::iterator it = _clients.find(fd);
                     if (it == _clients.end()) {
-                        std::cerr << "Error: client_fd not found in _clients" << std::endl;
                         CloseClient(fd);
                         continue;
                     }
@@ -220,7 +209,6 @@ void Server::EpollWait(const std::vector<ServerConfig> &servers)
                         }
                     }
                     if (!ls) {
-                        std::cerr << "Error: Listening socket not found for client " << fd << std::endl;
                         CloseClient(fd);
                         continue;
                     }
@@ -243,7 +231,6 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
     std::unordered_map<int, ClientContext>::iterator it = _clients.find(client_fd);
     if (it == _clients.end()) {
         // Handle error: client_fd not found in _clients
-        std::cerr << "Error: client_fd not found in _clients" << std::endl;
         CloseClient(client_fd);
         return;
     }
@@ -263,7 +250,6 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
                 // No more data to read
                 break;
             } else {
-                std::cerr << "Error: read failed for client " << client_fd << std::endl;
                 CloseClient(client_fd);
                 return;
             }
@@ -287,7 +273,6 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
                 _event.events = EPOLLOUT | EPOLLET;
                 _event.data.fd = client_fd;
                 if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, client_fd, &_event) == -1) {
-                    std::cerr << "Error: epoll_ctl MOD failed for client " << client_fd << std::endl;
                     CloseClient(client_fd);
                 }
                 return;
@@ -298,7 +283,6 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
             _event.events = EPOLLIN | EPOLLOUT | EPOLLET;
             _event.data.fd = client_fd;
             if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, client_fd, &_event) == -1) {
-                std::cerr << "Error: epoll_ctl MOD failed for client " << client_fd << std::endl;
                 CloseClient(client_fd);
             }
         }
@@ -309,7 +293,6 @@ void Server::HandleClientWrite(int client_fd)
 {
     std::unordered_map<int, ClientContext>::iterator it = _clients.find(client_fd);
     if (it == _clients.end()) {
-        std::cerr << "Error: client_fd not found in _clients" << std::endl;
         CloseClient(client_fd);
         return;
     }
@@ -329,7 +312,6 @@ void Server::HandleClientWrite(int client_fd)
                 // Cannot write more now
                 break;
             } else {
-                std::cerr << "Error: write failed for client " << client_fd << std::endl;
                 CloseClient(client_fd);
                 return;
             }
@@ -349,7 +331,6 @@ void Server::CloseClient(int client_fd)
     epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, client_fd, NULL);
     close(client_fd);
     _clients.erase(client_fd);
-    std::cout << "Closed connection with client fd: " << client_fd << std::endl;
 }
 
 Server::~Server()
