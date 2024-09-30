@@ -34,7 +34,7 @@
 				},
 				{
 					"path": "/redirect",
-					"methods": ["GET", "HEAD"],
+					"methods": ["GET"],
 					"redirection": "http://nu.nl",
 					"return_code": 301
 				},
