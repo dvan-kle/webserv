@@ -4,6 +4,20 @@
 #include "../include/Redirect.hpp"
 #include <sstream>
 
+std::string getCurrentTimeHttpFormat3()
+{
+    // Get the current time
+    std::time_t now = std::time(nullptr);
+
+    std::tm *gmt_time = std::gmtime(&now);
+    std::ostringstream ss;
+
+    // Format the time according to HTTP date standard (RFC 7231)
+    ss << std::put_time(gmt_time, "%a, %d %b %Y %H:%M:%S GMT");
+
+    return ss.str();
+}
+
 std::string Redirect::generateRedirectResponse(const std::string& http_version, const std::string& redirection_url, int return_code, const std::string& server_name) {
     std::string status_line;
 
@@ -26,7 +40,7 @@ std::string Redirect::generateRedirectResponse(const std::string& http_version, 
     response << "Location: " << redirection_url << "\r\n";
     response << "Content-Type: text/html\r\n";
     response << "Content-Length: 0\r\n";
-    response << "Date: " << getCurrentTimeHttpFormat() << "\r\n";
+    response << "Date: " << getCurrentTimeHttpFormat3() << "\r\n";
     response << "Server: " << server_name << "\r\n\r\n";
 
     return response.str();

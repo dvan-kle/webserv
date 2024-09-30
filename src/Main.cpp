@@ -4,22 +4,6 @@
 #include <sstream>
 #include <iostream>
 
-std::vector<int> ParsePorts(std::vector<ServerConfig> servers) {
-    std::vector<int> ports;
-    for (const auto& server : servers) {
-        ports.push_back(server.listen_port);
-    }
-    return ports;
-}
-
-std::vector<std::string> ParseHosts(std::vector<ServerConfig> servers) {
-	std::vector<std::string> hosts;
-	for (const auto& server : servers) {
-		hosts.push_back(server.listen_host);
-	}
-	return hosts;
-}
-
 int main(int argc, char **argv) {
     if (argc != 2) {
         std::cout << RED <<  "Usage: " + std::string(argv[0]) + " <config_file>" << RESET << std::endl;
@@ -50,10 +34,8 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // Step 4: Extract ports and initialize the server.
-    std::vector<int> ports = ParsePorts(servers);
-	std::vector<std::string> hosts = ParseHosts(servers);
-    Server server(ports, hosts, servers);
+    // Step 4: Initialize the server.
+    Server server(servers);
 
     return 0;
 }

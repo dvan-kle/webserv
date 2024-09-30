@@ -1,16 +1,28 @@
-#include "../include/Request.hpp"
-#include "../include/JsonParser.hpp"
-#include "../include/Redirect.hpp"
-#include "../include/AutoIndex.hpp"
-#include "../include/HeaderParser.hpp"
-#include "../include/BodyParser.hpp"
-
+#include "Request.hpp"
+#include "HeaderParser.hpp"
+#include "Redirect.hpp"
+#include "AutoIndex.hpp"
+#include "BodyParser.hpp"
 #include <regex>
 #include <fstream>
 #include <sstream>
 #include <ctime>
 #include <iomanip>
 #include <algorithm>
+
+std::string getCurrentTimeHttpFormat()
+{
+    // Get the current time
+    std::time_t now = std::time(nullptr);
+
+    std::tm *gmt_time = std::gmtime(&now);
+    std::ostringstream ss;
+
+    // Format the time according to HTTP date standard (RFC 7231)
+    ss << std::put_time(gmt_time, "%a, %d %b %Y %H:%M:%S GMT");
+
+    return ss.str();
+}
 
 void Request::NormalizeURL() {
     // If URL is exactly "/", do not modify
@@ -33,14 +45,36 @@ bool hasFileExtension(const std::string& url) {
     return std::regex_search(url, fileExtensionRegex);
 }
 
-Request::Request(ServerConfig server, const std::string &request_data)
-    : _config(server), _request(request_data)
+Request::Request(const std::vector<ServerConfig> &configs, const std::string &request_data)
+    : _configs(configs), _request(request_data) // Initialize _configs
 {
-    // No socket I/O in the constructor
+    // Select the appropriate ServerConfig based on Host header
+    // This will be done in ParseRequest
 }
 
 Request::~Request() {
     // Destructor logic if needed
+}
+
+ServerConfig* Request::selectServerConfig(const std::string &host_header)
+{
+    if (_configs.empty()) {
+        std::cerr << "No server configurations available" << std::endl;
+        return nullptr;
+    }
+
+    if (host_header.empty()) {
+        return &const_cast<ServerConfig&>(_configs[0]); // Default server
+    }
+
+    for (size_t i = 0; i < _configs.size(); ++i) {
+        if (_configs[i].server_name == host_header) {
+            return &const_cast<ServerConfig&>(_configs[i]);
+        }
+    }
+
+    // If no matching server_name, return default
+    return &const_cast<ServerConfig&>(_configs[0]);
 }
 
 void Request::ParseRequest() {
@@ -59,6 +93,20 @@ void Request::ParseRequest() {
     if (line_end_pos != std::string::npos) {
         std::string requestLine = _headers.substr(0, line_end_pos);
         ParseLine(requestLine);
+
+        // Extract Host header
+        std::string host_header = HeaderParser::getHost(_headers);
+
+        // Select the appropriate ServerConfig
+        ServerConfig* selected_config = selectServerConfig(host_header);
+        if (selected_config == nullptr) {
+            std::cerr << "No valid server configuration found for host: " << host_header << std::endl;
+            ServeErrorPage(500); // Internal Server Error
+            return;
+        }
+        _config = *selected_config;
+
+        // After selecting _config, you can proceed as before
 
         if (_needs_redirect) {
             // Send a 301 Moved Permanently redirect response
@@ -234,7 +282,6 @@ void Request::GetResponse() {
     _response += content;
 }
 
-
 void Request::responseHeader(const std::string &content, const std::string &status_code)
 {
     _response = _http_version + " " + status_code + "\r\n";
@@ -255,7 +302,6 @@ void Request::responseHeader(const std::string &content, const std::string &stat
     _response += "Server: " + _config.server_name  + "\r\n\r\n";
     // Note: Do not append the content here; it is appended separately
 }
-
 
 std::string Request::getStatusMessage(int statuscode)
 {
@@ -331,21 +377,6 @@ void Request::sendRedirectResponse(const std::string &redirection_url, int retur
     _response += "Content-Length: 0\r\n";
     _response += "Connection: close\r\n\r\n";
     _response_ready = true;
-}
-
-
-std::string getCurrentTimeHttpFormat()
-{
-    // Get the current time
-    std::time_t now = std::time(nullptr);
-
-    std::tm *gmt_time = std::gmtime(&now);
-    std::ostringstream ss;
-
-    // Format the time according to HTTP date standard (RFC 7231)
-    ss << std::put_time(gmt_time, "%a, %d %b %Y %H:%M:%S GMT");
-
-    return ss.str();
 }
 
 // Implement other methods as needed, ensuring no direct socket I/O
