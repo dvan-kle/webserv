@@ -1,13 +1,14 @@
 {
 	"servers": [
 		{
-			"listen_host": "0.0.0.0",
+			"listen_host": "localhost",
 			"listen_port": 8001,
 			"server_name": "myserver",
 			"error_pages": {
 				"404": "error_pages/error_404.html",
 				"403": "error_pages/error_403.html",
 				"405": "error_pages/error_405.html",
+				"413": "error_pages/error_413.html",
 				"415": "error_pages/error_415.html",
 				"500": "error_pages/error_500.html",
 				"502": "error_pages/error_502.html",
@@ -16,7 +17,7 @@
 				"401": "error_pages/error_401.html",
 				"504": "error_pages/error_504.html"
 			},
-			"client_max_body_size": "1M",
+			"client_max_body_size": "1GB",
 			"locations": [
 				{
 					"path": "/",

@@ -65,15 +65,12 @@ void Server::CreateSocket(int port, const std::string &ip)
     _address.sin_port = htons(port);
 
     // Convert ip string to binary form
-    if (ip == "localhost")
-        _address.sin_addr.s_addr = INADDR_ANY;
-    else {
-        if (inet_pton(AF_INET, ip.c_str(), &_address.sin_addr) <= 0) {
-            std::cerr << "Error: Invalid IP address" << std::endl;
-            close(sock);
-            exit(EXIT_FAILURE);
-        }
-    }
+	if (inet_pton(AF_INET, ip.c_str(), &_address.sin_addr) <= 0) {
+		std::cerr << "Error: Invalid IP address" << std::endl;
+		close(sock);
+		exit(EXIT_FAILURE);
+	}
+	
     if (bind(sock, (struct sockaddr*)&_address, sizeof(_address)) == -1) {
         std::cerr << RED << "Error: bind failed" << RESET << std::endl;
         std::cout << BLUE << "  Check your IP address and port" << RESET << std::endl;
