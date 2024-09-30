@@ -46,11 +46,11 @@ size_t parseBodySize(const std::string& size_str) {
 
     // Determine the multiplier (K, M, G)
     if (size_str.find("K") != std::string::npos) {
-        multiplier = 1024;  // Kilobytes
+        multiplier = 1000;  // Kilobytes
     } else if (size_str.find("M") != std::string::npos) {
-        multiplier = 1024 * 1024;  // Megabytes
+        multiplier = 1000 * 1000;  // Megabytes
     } else if (size_str.find("G") != std::string::npos) {
-        multiplier = 1024 * 1024 * 1024;  // Gigabytes
+        multiplier = 1000 * 1000 * 1000;  // Gigabytes
     }
 
     return body_size * multiplier;
