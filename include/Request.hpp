@@ -3,6 +3,7 @@
 #include "JsonParser.hpp"
 #include "Libaries.hpp"
 #include <string>
+#include <vector>
 
 const std::string HTTP_200 = "200 OK";
 const std::string HTTP_400 = "400 Bad Request";
@@ -16,6 +17,7 @@ class Request
 {
 private:
     ServerConfig _config;
+    std::vector<ServerConfig> _configs; // Added member variable
 
     std::string _method;
     std::string _url;
@@ -32,8 +34,12 @@ private:
     bool _needs_redirect = false;
     bool _response_ready = false;
 
+    // Updated method signature
+    ServerConfig* selectServerConfig(const std::string &host_header);
+
 public:
-    Request(ServerConfig server, const std::string &request_data);
+    // Updated constructor to initialize _configs
+    Request(const std::vector<ServerConfig> &configs, const std::string &request_data);
     Request(const Request &src) = delete;
     Request &operator=(const Request &src) = delete;
     ~Request();
@@ -75,5 +81,3 @@ public:
     bool isResponseReady() const { return _response_ready; }
     std::string getResponse() const { return _response; }
 };
-
-std::string getCurrentTimeHttpFormat();

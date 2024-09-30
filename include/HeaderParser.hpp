@@ -3,10 +3,9 @@
 #include <string>
 #include <utility>
 
-class HeaderParser
-{
+class HeaderParser {
 public:
-    static std::pair<std::string, std::string> parseHeaders(const std::string& request_data);
-    static size_t getContentLength(const std::string& headers);
-    static bool isChunkedEncoding(const std::string& headers);
+    static std::pair<std::string, std::string> parseHeaders(const std::string &request);
+    static size_t getContentLength(const std::string &headers);
+    static std::string getHost(const std::string &headers);
 };

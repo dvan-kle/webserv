@@ -2,6 +2,20 @@
 #include <fstream>
 #include <sstream>
 
+std::string getCurrentTimeHttpFormat2()
+{
+    // Get the current time
+    std::time_t now = std::time(nullptr);
+
+    std::tm *gmt_time = std::gmtime(&now);
+    std::ostringstream ss;
+
+    // Format the time according to HTTP date standard (RFC 7231)
+    ss << std::put_time(gmt_time, "%a, %d %b %Y %H:%M:%S GMT");
+
+    return ss.str();
+}
+
 void Request::ServeErrorPage(int error_code) {
     // Check if the error code has a corresponding page in the configuration
     auto it = _config.error_pages.find(error_code);
@@ -16,7 +30,7 @@ void Request::ServeErrorPage(int error_code) {
             _response = _http_version + " " + getStatusMessage(error_code) + "\r\n";
             _response += "Content-Type: text/html\r\n";
             _response += "Content-Length: " + std::to_string(error_content.size()) + "\r\n";
-            _response += "Date: " + getCurrentTimeHttpFormat() + "\r\n";
+            _response += "Date: " + getCurrentTimeHttpFormat2() + "\r\n";
             _response += "Server: " + _config.server_name + "\r\n\r\n";
             _response += error_content;
 

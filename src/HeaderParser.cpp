@@ -1,33 +1,45 @@
-#include "../include/HeaderParser.hpp"
+#include "HeaderParser.hpp"
 #include <algorithm>
-#include <cctype>
+#include <cstring>
 
-std::pair<std::string, std::string> HeaderParser::parseHeaders(const std::string& request_data) {
-    size_t pos = request_data.find("\r\n\r\n");
-    if (pos != std::string::npos) {
-        std::string headers = request_data.substr(0, pos + 4);
-        std::string body = request_data.substr(pos + 4);
-        return std::make_pair(headers, body);
-    } else {
-        // Headers are incomplete or missing
+std::pair<std::string, std::string> HeaderParser::parseHeaders(const std::string &request)
+{
+    size_t pos = request.find("\r\n\r\n");
+    if (pos == std::string::npos) {
         return std::make_pair("", "");
     }
+    std::string headers = request.substr(0, pos);
+    std::string body = request.substr(pos + 4);
+    return std::make_pair(headers, body);
 }
 
-size_t HeaderParser::getContentLength(const std::string& headers) {
-    size_t cl_pos = headers.find("Content-Length:");
-    if (cl_pos != std::string::npos) {
-        size_t cl_end = headers.find("\r\n", cl_pos);
-        std::string cl_str = headers.substr(cl_pos + 15, cl_end - (cl_pos + 15));
-
-        // Trim whitespace
-        cl_str.erase(std::remove_if(cl_str.begin(), cl_str.end(), ::isspace), cl_str.end());
-
-        return static_cast<size_t>(std::stoul(cl_str));
+size_t HeaderParser::getContentLength(const std::string &headers)
+{
+    size_t pos = headers.find("Content-Length:");
+    if (pos == std::string::npos) {
+        return 0;
     }
-    return 0;
+    pos += strlen("Content-Length:");
+    size_t end = headers.find("\r\n", pos);
+    std::string value = headers.substr(pos, end - pos);
+    return std::stoi(value);
 }
 
-bool HeaderParser::isChunkedEncoding(const std::string& headers) {
-    return headers.find("Transfer-Encoding: chunked") != std::string::npos;
+std::string HeaderParser::getHost(const std::string &headers)
+{
+    size_t pos = headers.find("Host:");
+    if (pos == std::string::npos) {
+        return "";
+    }
+    pos += strlen("Host:");
+    size_t end = headers.find("\r\n", pos);
+    std::string host = headers.substr(pos, end - pos);
+    // Trim whitespace
+    host.erase(host.begin(), std::find_if(host.begin(), host.end(), [](int ch) {
+        return !std::isspace(ch);
+    }));
+    host.erase(std::find_if(host.rbegin(), host.rend(), [](int ch) {
+        return !std::isspace(ch);
+    }).base(), host.end());
+    return host;
 }
