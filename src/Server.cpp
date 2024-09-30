@@ -180,6 +180,20 @@ void Server::HandleClient(int client_fd, const std::vector<ServerConfig> &server
         if (server.listen_port == port) {
             Request request(server, _clients[client_fd].read_buffer);
             request.ParseRequest();
+
+            if (request.isResponseReady()) {
+                _clients[client_fd].write_buffer = request.getResponse();
+                // Modify epoll to watch for EPOLLOUT only
+                _event.events = EPOLLOUT | EPOLLET;
+                _event.data.fd = client_fd;
+                if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, client_fd, &_event) == -1) {
+                    std::cerr << "Error: epoll_ctl MOD failed" << std::endl;
+                    CloseClient(client_fd);
+                }
+                break;
+            }
+
+            // If not a redirect, proceed normally
             _clients[client_fd].write_buffer = request.getResponse();
 
             // Modify epoll to watch for EPOLLOUT

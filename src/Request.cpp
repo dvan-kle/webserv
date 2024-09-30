@@ -12,6 +12,22 @@
 #include <iomanip>
 #include <algorithm>
 
+void Request::NormalizeURL() {
+    // If URL is exactly "/", do not modify
+    if (_url == "/") {
+        return;
+    }
+
+    // Remove all trailing slashes
+    size_t last = _url.find_last_not_of('/');
+    if (last != std::string::npos) {
+        _url = _url.substr(0, last + 1);
+    } else {
+        // URL was all slashes, set to "/"
+        _url = "/";
+    }
+}
+
 bool hasFileExtension(const std::string& url) {
     static const std::regex fileExtensionRegex(R"(\.[a-zA-Z0-9]+$)");
     return std::regex_search(url, fileExtensionRegex);
@@ -44,6 +60,16 @@ void Request::ParseRequest() {
         std::string requestLine = _headers.substr(0, line_end_pos);
         ParseLine(requestLine);
 
+        if (_needs_redirect) {
+            // Send a 301 Moved Permanently redirect response
+            _response = _http_version + " 301 Moved Permanently\r\n";
+            _response += "Location: " + _url + "\r\n";
+            _response += "Content-Length: 0\r\n";
+            _response += "Connection: close\r\n\r\n";
+            _response_ready = true;
+            return;
+        }
+
         auto location = findLocation(_url);
         if (location == nullptr || !isMethodAllowed(location, _method)) {
             ServeErrorPage(405);  // Method Not Allowed
@@ -66,24 +92,47 @@ void Request::ParseRequest() {
     }
 }
 
-// Parse the first line of the HTTP request
 void Request::ParseLine(const std::string &line) {
     size_t pos = 0;
     size_t prev = 0;
 
+    // Extract the HTTP method
     pos = line.find(" ");
+    if (pos == std::string::npos) {
+        throw std::runtime_error("Error: Invalid HTTP request line (method)");
+    }
     _method = line.substr(prev, pos - prev);
     prev = pos + 1;
 
+    // Extract the URL
     pos = line.find(" ", prev);
-    _url = line.substr(prev, pos - prev);
+    if (pos == std::string::npos) {
+        throw std::runtime_error("Error: Invalid HTTP request line (URL)");
+    }
+    std::string original_url = line.substr(prev, pos - prev);
     prev = pos + 1;
 
+    // Extract the HTTP version
     _http_version = line.substr(prev);
 
     // Validate HTTP version
     if (_http_version.empty() || (_http_version != "HTTP/1.1" && _http_version != "HTTP/1.0")) {
         _http_version = "HTTP/1.1";  // Default to HTTP/1.1 if missing or invalid
+    }
+
+    // Check if the original URL has a trailing slash (and is not just "/")
+    bool had_trailing_slash = (original_url.length() > 1 && original_url.back() == '/');
+
+    // Normalize the URL by removing trailing slashes
+    _url = original_url;
+    NormalizeURL();
+
+    // Log the normalization process
+    std::cerr << "Original URL: " << original_url << " | Normalized URL: " << _url << std::endl;
+
+    // If the URL had a trailing slash and was normalized, set a flag for redirect
+    if (had_trailing_slash && _url != original_url) {
+        _needs_redirect = true;
     }
 }
 
@@ -115,45 +164,58 @@ void Request::GetResponse() {
         return;
     }
 
-    // Handle CGI requests in GET method
-    if (isCgiRequest(_url)) {
-        executeCGI(_url, _method, "");  // Empty body for GET requests
-        return;
-    }
+    // Determine if the URL has a file extension
+    bool isFile = hasFileExtension(_url);
+    std::string filePath;
 
-    // Check if the URL maps to a file or directory and construct the file path
-    std::string filePath = location->root;
-    bool isDirectory = false;
-
-    if (hasFileExtension(_url)) {
-        // If the URL is a file (e.g., upload.html), append the URL to the root directory
-        filePath += _url;
+    if (isFile) {
+        // If the URL is a file (e.g., /index.html), append the URL to the root directory
+        filePath = location->root + _url;
     } else {
-        // If the URL maps to a directory (e.g., /upload)
-        filePath += "/" + location->index; // default to index if available
-        struct stat pathStat;
-        if (stat(filePath.c_str(), &pathStat) == -1 || !S_ISREG(pathStat.st_mode)) {
-            if (location->autoindex) {
-                isDirectory = true;  // Directory without index
-                filePath = location->root + _url;  // Use directory path directly
+        // Check if the URL exactly matches the location path
+        if (_url == location->path) {
+            // Serve the index file directly from the root
+            filePath = location->root + "/" + location->index;
+        } else {
+            // If the URL does not have a file extension, treat it as a directory
+            std::string dirPath = location->root + _url;
+            struct stat pathStat;
+
+            if (stat(dirPath.c_str(), &pathStat) == -1) {
+                // Path does not exist
+                ServeErrorPage(404);
+                return;
+            }
+
+            if (S_ISDIR(pathStat.st_mode)) {
+                // If it's a directory, append index file
+                if (dirPath.back() != '/')
+                    dirPath += '/';
+                dirPath += location->index;
+                filePath = dirPath;
             } else {
-                ServeErrorPage(404);  // File not found
+                // Path exists but is not a directory
+                ServeErrorPage(404);
                 return;
             }
         }
     }
 
-    // If autoindex is enabled and it's a directory, generate the directory listing
-    if (isDirectory && location->autoindex) {
-        std::string directoryListing = AutoIndex::generateDirectoryListing(filePath, _url, _config.listen_host, _config.listen_port);
-        sendHtmlResponse(directoryListing);
-        return;
-    }
-
-    // Check if the file exists
-    struct stat pathStat;
-    if (stat(filePath.c_str(), &pathStat) == -1 || !S_ISREG(pathStat.st_mode)) {
-        ServeErrorPage(404);  // File not found
+    // Now, check if the file exists and is a regular file
+    struct stat fileStat;
+    if (stat(filePath.c_str(), &fileStat) == -1 || !S_ISREG(fileStat.st_mode)) {
+        if (!isFile && location->autoindex) {
+            // If autoindex is enabled and the directory exists, generate directory listing
+            std::string directoryPath = location->root + _url;
+            struct stat dirStat;
+            if (stat(directoryPath.c_str(), &dirStat) == 0 && S_ISDIR(dirStat.st_mode)) {
+                std::string directoryListing = AutoIndex::generateDirectoryListing(directoryPath, _url, _config.listen_host, _config.listen_port);
+                sendHtmlResponse(directoryListing);
+                return;
+            }
+        }
+        // File does not exist
+        ServeErrorPage(404);
         return;
     }
 
@@ -171,6 +233,7 @@ void Request::GetResponse() {
 
     _response += content;
 }
+
 
 void Request::responseHeader(const std::string &content, const std::string &status_code)
 {
@@ -232,6 +295,16 @@ LocationConfig* Request::findLocation(const std::string& url) {
         }
     }
 
+    // If no specific location matches, default to "/"
+    if (!best_match) {
+        for (auto& location : _config.locations) {
+            if (location.path == "/") {
+                best_match = &location;
+                break;
+            }
+        }
+    }
+
     // Check if the matched location has CGI capabilities
     if (best_match && !best_match->cgi_extension.empty() && !best_match->cgi_path.empty()) {
         // Ensure the location has a root defined to serve CGI
@@ -252,8 +325,14 @@ bool Request::isMethodAllowed(LocationConfig* location, const std::string& metho
 }
 
 void Request::sendRedirectResponse(const std::string &redirection_url, int return_code) {
-    _response = Redirect::generateRedirectResponse(_http_version, redirection_url, return_code, _config.server_name);
+    // Construct the redirect response based on the return code
+    _response = _http_version + " " + std::to_string(return_code) + " Redirect\r\n";
+    _response += "Location: " + redirection_url + "\r\n";
+    _response += "Content-Length: 0\r\n";
+    _response += "Connection: close\r\n\r\n";
+    _response_ready = true;
 }
+
 
 std::string getCurrentTimeHttpFormat()
 {

@@ -33,7 +33,7 @@
 					"upload_path": "uploads"
 				},
 				{
-					"path": "/redirect",
+					"path": "/redirect/add",
 					"methods": ["GET"],
 					"redirection": "http://nu.nl",
 					"return_code": 301
