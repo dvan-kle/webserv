@@ -88,7 +88,7 @@ void Request::ParseLine(const std::string &line) {
 }
 
 void Request::SendResponse(const std::string &requestBody) {
-    if (_method == "GET" || _method == "HEAD") {
+    if (_method == "GET") {
         GetResponse();
     } else if (_method == "POST") {
         // Check if the request is a CGI request
@@ -169,12 +169,7 @@ void Request::GetResponse() {
     // Construct the response headers and body
     responseHeader(content, HTTP_200);
 
-    // If it's a HEAD request, omit the body
-    if (_method == "HEAD") {
-        // Do not include the body
-    } else {
-        _response += content;  // Include content in the response
-    }
+    _response += content;
 }
 
 void Request::responseHeader(const std::string &content, const std::string &status_code)
