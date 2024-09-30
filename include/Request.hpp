@@ -29,6 +29,9 @@ private:
 
     std::string _headers;
 
+    bool _needs_redirect = false;
+    bool _response_ready = false;
+
 public:
     Request(ServerConfig server, const std::string &request_data);
     Request(const Request &src) = delete;
@@ -65,9 +68,12 @@ public:
 
     void sendRedirectResponse(const std::string &redirection_url, int return_code);
 
-    std::string getResponse() const { return _response; } // Getter for the response
-
     void createDir(const std::string &path);
+
+    void NormalizeURL();
+
+    bool isResponseReady() const { return _response_ready; }
+    std::string getResponse() const { return _response; }
 };
 
 std::string getCurrentTimeHttpFormat();
