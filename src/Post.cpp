@@ -114,7 +114,7 @@ void Request::PostResponse(const std::string &requestBody) {
     }
     else {
         std::cerr << "Unsupported content type: " << contentType << std::endl;
-        handleUnsupportedContentType();
+        ServeErrorPage(415);
     }
 }
 
@@ -266,13 +266,6 @@ void Request::handleMultipartFormData(const std::string &requestBody) {
     sendHtmlResponse(htmlContent);
 }
 
-
-
-// Handling unsupported content types
-void Request::handleUnsupportedContentType() {
-    std::string htmlContent = "<html><body><h1>Unsupported content type!</h1></body></html>";
-    sendHtmlResponse(htmlContent);
-}
 
 // Generic function to send HTML response
 void Request::sendHtmlResponse(const std::string &htmlContent)

@@ -343,6 +343,8 @@ std::string Request::getStatusMessage(int statuscode)
         return HTTP_405;
     case 413:
         return HTTP_413;
+    case 415:
+        return HTTP_415;
     case 500:
         return HTTP_500;
     default:
