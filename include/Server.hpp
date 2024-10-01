@@ -54,6 +54,11 @@ private:
 
     void HandleClient(int client_fd, const std::vector<ServerConfig> &servers);
 
+    bool HandleListeningSocket(int fd);
+    void AcceptConnection(int listening_fd);
+    ListeningSocket* FindListeningSocket(int listening_socket_fd);
+    const ServerConfig* FindMatchedConfig(ListeningSocket* listening_socket, const std::string &host);
+
 public:
     Server(const std::vector<ServerConfig> &servers);
     Server(const Server &src) = delete;
