@@ -227,9 +227,16 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
 
     char buffer[4096];
     ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer));
+    
     if (bytes_read > 0) {
+        // Successfully read some data
         client.read_buffer.append(buffer, bytes_read);
-    } else if (bytes_read == 0 || (bytes_read == -1 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+    } else if (bytes_read == 0) {
+        // Client closed the connection
+        CloseClient(client_fd);
+        return;
+    } else {
+        // Error occurred in reading (since we can't use errno)
         CloseClient(client_fd);
         return;
     }
@@ -237,11 +244,8 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
     // Check if the request headers have been fully received
     size_t pos = client.read_buffer.find("\r\n\r\n");
     if (pos != std::string::npos) {
-        // Parse the Host header from the request
+        // Parse the Host header from the request and proceed...
         std::string host_header = HeaderParser::getHost(client.read_buffer);
-
-        std::cout << "Received request for Host: " << host_header << std::endl;
-
         // Find the correct listening socket by matching the client's listening socket fd
         ListeningSocket* matched_socket = nullptr;
         for (size_t i = 0; i < _listening_sockets.size(); ++i) {
@@ -250,14 +254,12 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
                 break;
             }
         }
-
         if (!matched_socket) {
-            // If no socket match found, close the client
             CloseClient(client_fd);
             return;
         }
 
-        // Match the server configuration by host (Host header) and port (listen_port)
+        // Match the server configuration by host and port
         const ServerConfig* matched_config = nullptr;
         for (const ServerConfig &config : matched_socket->configs) {
             if (config.server_name == host_header) {
@@ -265,10 +267,8 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
                 break;
             }
         }
-
         if (!matched_config) {
-            // If no match, fallback to the first configuration (default behavior)
-            matched_config = &matched_socket->configs[0];
+            matched_config = &matched_socket->configs[0]; // Default configuration
         }
 
         // Handle request with the matched configuration
@@ -288,6 +288,8 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
 
 
 
+
+
 void Server::HandleClientWrite(int client_fd)
 {
     auto it = _clients.find(client_fd);
@@ -302,16 +304,27 @@ void Server::HandleClientWrite(int client_fd)
     }
 
     ssize_t bytes_written = write(client_fd, client.write_buffer.c_str(), client.write_buffer.size());
+    
     if (bytes_written > 0) {
+        // Successfully wrote some data, remove that portion from the buffer
         client.write_buffer.erase(0, bytes_written);
-    } else if (bytes_written == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
+    } else if (bytes_written == 0) {
+        // Unusual case for write but treat it as the client closing the connection
         CloseClient(client_fd);
+        return;
+    } else {
+        // Error occurred in writing (we do not rely on errno)
+        CloseClient(client_fd);
+        return;
     }
 
+    // If all data has been written, close the client
     if (client.write_buffer.empty()) {
         CloseClient(client_fd);
     }
 }
+    
+
 
 void Server::CloseClient(int client_fd)
 {

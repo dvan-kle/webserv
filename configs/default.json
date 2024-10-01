@@ -3,7 +3,7 @@
 		{
 			"listen_host": "0.0.0.0",
 			"listen_port": 8001,
-			"server_name": "example.com",
+			"server_name": "myserver1",
 			"error_pages": {
 				"404": "error_pages/error_404.html",
 				"403": "error_pages/error_403.html",
@@ -39,6 +39,11 @@
 					"redirection": "http://nu.nl",
 					"return_code": 301
 				},
+				{
+					"path": "/ls",
+					"methods": ["GET"],
+					"root": "www/css"
+				},
                 {
                     "path": "/cgi-bin",
                     "methods": ["GET", "POST"],
@@ -51,7 +56,7 @@
 		{
 			"listen_host": "0.0.0.0",
 			"listen_port": 8002,
-			"server_name": "google.com",
+			"server_name": "myserver2",
 			"client_max_body_size": "1M",
 			"locations": [
 				{
@@ -60,6 +65,19 @@
 					"root": "www",
 					"index": "cgi.html",
 					"autoindex": true
+				}
+			]
+		},
+		{
+			"listen_host": "0.0.0.0",
+			"listen_port": 8003,
+			"server_name": "myserver3",
+			"client_max_body_size": "1M",
+			"locations": [
+				{
+					"path": "/ls",
+					"methods": ["GET"],
+					"root": "www/css"
 				}
 			]
 		}
