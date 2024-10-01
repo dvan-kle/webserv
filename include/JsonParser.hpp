@@ -13,7 +13,7 @@ struct LocationConfig {
     std::string redirection;
     int return_code = 0;
     std::string root;
-    bool autoindex = false;
+    bool autoindex = true;
     std::string upload_path;
     std::vector<std::string> cgi_extension;
     std::vector<std::string> cgi_path;
