@@ -344,6 +344,8 @@ std::string Request::getStatusMessage(int statuscode)
         return HTTP_405;
     case 413:
         return HTTP_413;
+    case 415:
+        return HTTP_415;
     case 500:
         return HTTP_500;
     default:
@@ -359,12 +361,34 @@ bool Request::isMethodAllowed(LocationConfig* location, const std::string& metho
 }
 
 void Request::sendRedirectResponse(const std::string &redirection_url, int return_code) {
-    // Construct the redirect response based on the return code
-    _response = _http_version + " " + std::to_string(return_code) + " Redirect\r\n";
-    _response += "Location: " + redirection_url + "\r\n";
-    _response += "Content-Length: 0\r\n";
-    _response += "Connection: close\r\n\r\n";
+    std::string status_line;
+
+    // Set appropriate status message based on return code
+    switch (return_code) {
+        case 301: status_line = "301 Moved Permanently";
+            break;
+        case 302: status_line = "302 Found";
+            break;
+        case 307: status_line = "307 Temporary Redirect";
+            break;
+        case 308: status_line = "308 Permanent Redirect";
+            break;
+        default: status_line = std::to_string(return_code) + " Redirect";
+            break;
+    }
+
+    // Build the HTTP response
+    std::ostringstream response;
+    response << _http_version << " " << status_line << "\r\n";
+    response << "Location: " << redirection_url << "\r\n";
+    response << "Content-Type: text/html\r\n";
+    response << "Content-Length: 0\r\n";
+    response << "Date: " << getCurrentTimeHttpFormat() << "\r\n";
+    response << "Server: " << _config.server_name << "\r\n\r\n";
+
+    _response = response.str();
     _response_ready = true;
 }
+
 
 // Implement other methods as needed, ensuring no direct socket I/O

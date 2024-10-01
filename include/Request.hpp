@@ -10,6 +10,7 @@ const std::string HTTP_403 = "403 Forbidden";
 const std::string HTTP_404 = "404 Not Found";
 const std::string HTTP_405 = "405 Method Not Allowed";
 const std::string HTTP_413 = "413 Payload Too Large";
+const std::string HTTP_415 = "415 Unsupported Media Type";
 const std::string HTTP_500 = "500 Internal Server Error";
 
 class Request
