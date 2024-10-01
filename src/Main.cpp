@@ -1,5 +1,6 @@
 #include "../include/JsonParser.hpp"
 #include "../include/Server.hpp"
+#include "../include/Colors.hpp"
 #include <fstream>
 #include <sstream>
 #include <iostream>

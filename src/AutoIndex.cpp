@@ -1,4 +1,6 @@
 #include "../include/AutoIndex.hpp"
+#include <sstream>
+#include <dirent.h>
 
 std::string AutoIndex::generateDirectoryListing(const std::string& directoryPath, const std::string& url, const std::string& host, int port) {
     std::ostringstream html;

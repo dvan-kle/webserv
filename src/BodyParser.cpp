@@ -1,4 +1,5 @@
 #include "../include/BodyParser.hpp"
+#include <sstream>
 
 std::string BodyParser::unchunkRequestBody(const std::string& buffer) {
     std::istringstream stream(buffer);

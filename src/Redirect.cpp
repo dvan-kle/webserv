@@ -3,6 +3,8 @@
 
 #include "../include/Redirect.hpp"
 #include <sstream>
+#include <ctime>
+#include <iomanip>
 
 std::string getCurrentTimeHttpFormat3()
 {
