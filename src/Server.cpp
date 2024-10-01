@@ -1,6 +1,7 @@
 #include "Server.hpp"
 #include "Request.hpp"
 #include "HeaderParser.hpp"
+#include "Colors.hpp"
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/socket.h>

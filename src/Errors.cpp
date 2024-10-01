@@ -1,6 +1,8 @@
 #include "../include/Request.hpp"
 #include <fstream>
 #include <sstream>
+#include <ctime>
+#include <iomanip>
 
 std::string getCurrentTimeHttpFormat2()
 {

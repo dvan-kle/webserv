@@ -1,5 +1,7 @@
 #include "../include/Request.hpp"
-#include <iostream>  // Added for std::cout
+#include <iostream>
+#include <unistd.h>
+#include <sys/wait.h>
 
 bool Request::isCgiRequest(std::string path) {
     LocationConfig* location = findLocation(_url);

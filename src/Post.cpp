@@ -7,6 +7,7 @@
 #include <fstream>
 #include <algorithm>
 #include <cctype>
+#include <map>
 
 
 // Helper function to get absolute path from a relative or absolute one

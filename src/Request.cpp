@@ -3,12 +3,13 @@
 #include "Redirect.hpp"
 #include "AutoIndex.hpp"
 #include "BodyParser.hpp"
+#include <iomanip>
 #include <regex>
 #include <fstream>
-#include <sstream>
-#include <ctime>
-#include <iomanip>
-#include <algorithm>
+#include <iostream>
+#include <unistd.h>
+#include <sys/wait.h>
+#include <sys/stat.h>
 
 std::string getCurrentTimeHttpFormat()
 {
