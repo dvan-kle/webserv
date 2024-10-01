@@ -14,10 +14,10 @@ std::string AutoIndex::generateDirectoryListing(const std::string& directoryPath
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr) {
         std::string entryName = entry->d_name;
-        if (entryName == ".") continue;  // Skip current directory
+        if (entryName == ".")
+            continue;  // Skip current directory
 
-        std::string entryUrl = "http://" + host + ":" + std::to_string(port) + url + (entryName == ".." ? "/.." : "/" + entryName);
-        html << "<li><a href=\"" << entryUrl << "\">" << entryName << "</a></li>";
+        html << "<li>" << entryName << "</li>";
     }
 
     closedir(dir);

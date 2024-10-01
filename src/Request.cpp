@@ -198,9 +198,6 @@ void Request::SendResponse(const std::string &requestBody) {
     }
 }
 
-// Implement other methods, ensuring no direct socket I/O
-// For example, in GetResponse:
-
 void Request::GetResponse() {
     auto location = findLocation(_url);
 
@@ -209,74 +206,104 @@ void Request::GetResponse() {
         return;
     }
 
-    // Determine if the URL has a file extension
     bool isFile = hasFileExtension(_url);
-    std::string filePath;
+    std::string filePath = location->root;
 
-    if (isFile) {
-        // If the URL is a file (e.g., /index.html), append the URL to the root directory
-        filePath = location->root + _url;
-    } else {
-        // Check if the URL exactly matches the location path
-        if (_url == location->path) {
-            // Serve the index file directly from the root
-            filePath = location->root + "/" + location->index;
-        } else {
-            // If the URL does not have a file extension, treat it as a directory
-            std::string dirPath = location->root + _url;
-            struct stat pathStat;
-
-            if (stat(dirPath.c_str(), &pathStat) == -1) {
-                // Path does not exist
-                ServeErrorPage(404);
-                return;
-            }
-
-            if (S_ISDIR(pathStat.st_mode)) {
-                // If it's a directory, append index file
-                if (dirPath.back() != '/')
-                    dirPath += '/';
-                dirPath += location->index;
-                filePath = dirPath;
-            } else {
-                // Path exists but is not a directory
-                ServeErrorPage(404);
-                return;
-            }
-        }
+    // Only append _url if it's not the root path ("/")
+    if (_url != location->path) {
+        filePath += _url;
     }
 
-    // Now, check if the file exists and is a regular file
-    struct stat fileStat;
-    if (stat(filePath.c_str(), &fileStat) == -1 || !S_ISREG(fileStat.st_mode)) {
-        if (!isFile && location->autoindex) {
-            // If autoindex is enabled and the directory exists, generate directory listing
-            std::string directoryPath = location->root + _url;
-            struct stat dirStat;
-            if (stat(directoryPath.c_str(), &dirStat) == 0 && S_ISDIR(dirStat.st_mode)) {
-                std::string directoryListing = AutoIndex::generateDirectoryListing(directoryPath, _url, _config.listen_host, _config.listen_port);
-                sendHtmlResponse(directoryListing);
-                return;
-            }
-        }
-        // File does not exist
+
+    // Check if it's a directory
+    struct stat pathStat;
+    if (stat(filePath.c_str(), &pathStat) == -1) {
         ServeErrorPage(404);
         return;
     }
 
-    // Serve the requested file
-    std::ifstream ifstr(filePath, std::ios::binary);
-    if (!ifstr) {
-        ServeErrorPage(404);  // File Not Found
-        return;
+    if (S_ISDIR(pathStat.st_mode)) {
+        // Directory found, try serving the index file if specified
+        if (!location->index.empty()) {
+            if (filePath.back() != '/') filePath += '/';  // Ensure trailing slash
+            filePath += location->index;  // Append the index file
+
+            // Check if the index file exists and is a regular file
+            struct stat fileStat;
+            if (stat(filePath.c_str(), &fileStat) == -1 || !S_ISREG(fileStat.st_mode)) {
+                // If no index file exists, fall back to autoindex if enabled
+                if (location->autoindex) {
+                    std::string directoryListing = AutoIndex::generateDirectoryListing(location->root, _url, _config.listen_host, _config.listen_port);
+                    sendHtmlResponse(directoryListing);
+                    return;
+                } else {
+                    ServeErrorPage(404);
+                    return;
+                }
+            } else {
+                // Serve the index file directly, avoiding recursive request handling
+                std::ifstream ifstr(filePath, std::ios::binary);
+                if (!ifstr) {
+                    ServeErrorPage(404);
+                    return;
+                }
+
+                std::string content((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
+                responseHeader(content, HTTP_200);
+                _response += content;
+                return;  // Prevent further request handling
+            }
+        } else {
+            // No index file specified, handle with autoindex
+            if (location->autoindex) {
+                std::string directoryListing = AutoIndex::generateDirectoryListing(location->root, _url, _config.listen_host, _config.listen_port);
+                sendHtmlResponse(directoryListing);
+                return;
+            } else {
+                ServeErrorPage(404);
+                return;
+            }
+        }
+    } else {
+        // If it's a file, serve the file directly
+        std::ifstream ifstr(filePath, std::ios::binary);
+        if (!ifstr) {
+            ServeErrorPage(404);
+            return;
+        }
+
+        std::string content((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
+        responseHeader(content, HTTP_200);
+        _response += content;
+    }
+}
+
+
+
+LocationConfig* Request::findLocation(const std::string& url) {
+    LocationConfig* best_match = nullptr;
+    size_t best_match_length = 0;
+
+    for (auto& location : _config.locations) {
+        if (url.find(location.path) == 0) {
+            size_t path_length = location.path.length();
+            if (path_length > best_match_length) {
+                best_match = &location;
+                best_match_length = path_length;
+            }
+        }
     }
 
-    std::string content((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
+    if (!best_match) {
+        for (auto& location : _config.locations) {
+            if (location.path == "/") {
+                best_match = &location;
+                break;
+            }
+        }
+    }
 
-    // Construct the response headers and body
-    responseHeader(content, HTTP_200);
-
-    _response += content;
+    return best_match;
 }
 
 void Request::responseHeader(const std::string &content, const std::string &status_code)
@@ -321,43 +348,6 @@ std::string Request::getStatusMessage(int statuscode)
     default:
         return HTTP_200;
     }
-}
-
-LocationConfig* Request::findLocation(const std::string& url) {
-    LocationConfig* best_match = nullptr;
-    size_t best_match_length = 0;
-
-    // Iterate through the available locations in the server configuration
-    for (auto& location : _config.locations) {
-        if (url.find(location.path) == 0) {
-            size_t path_length = location.path.length();
-            if (path_length > best_match_length) {
-                best_match = &location;
-                best_match_length = path_length;
-            }
-        }
-    }
-
-    // If no specific location matches, default to "/"
-    if (!best_match) {
-        for (auto& location : _config.locations) {
-            if (location.path == "/") {
-                best_match = &location;
-                break;
-            }
-        }
-    }
-
-    // Check if the matched location has CGI capabilities
-    if (best_match && !best_match->cgi_extension.empty() && !best_match->cgi_path.empty()) {
-        // Ensure the location has a root defined to serve CGI
-        if (best_match->root.empty()) {
-            std::cerr << "CGI request failed: No valid root defined for " << best_match->path << std::endl;
-            return nullptr;
-        }
-    }
-
-    return best_match;
 }
 
 bool Request::isMethodAllowed(LocationConfig* location, const std::string& method) {

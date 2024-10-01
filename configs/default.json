@@ -42,7 +42,8 @@
 				{
 					"path": "/ls",
 					"methods": ["GET"],
-					"root": "www/css"
+					"root": "www/css",
+					"autoindex": true
 				},
                 {
                     "path": "/cgi-bin",
@@ -77,7 +78,8 @@
 				{
 					"path": "/ls",
 					"methods": ["GET"],
-					"root": "www/css"
+					"root": "www/css",
+					"autoindex": true
 				}
 			]
 		}
