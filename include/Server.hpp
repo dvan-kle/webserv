@@ -4,6 +4,7 @@
 #include "JsonParser.hpp"
 #include <unordered_map>
 #include <vector>
+#include <set>
 
 #define MAX_EVENTS 10
 
@@ -61,3 +62,4 @@ public:
 
     void EpollWait(const std::vector<ServerConfig> &servers);
 };
+

@@ -9,7 +9,7 @@
 #include <cstring>
 #include <iostream>
 #include <cerrno>
-#include <algorithm>
+#include <set>
 
 // Utility function to compare host and port
 bool compareHostPort(const ServerConfig &a, const ServerConfig &b) {
@@ -40,28 +40,40 @@ void Server::SetNonBlocking(int sock) {
 
 void Server::CreateListeningSockets(const std::vector<ServerConfig> &servers)
 {
-    // Group servers by listen_host and listen_port
+    std::set<int> used_ports;
+    std::unordered_map<std::string, std::set<int>> hostname_port_map;  // Track hostnames per port
+
     std::vector<ServerConfig> remaining_servers = servers;
 
     while (!remaining_servers.empty()) {
         ServerConfig current = remaining_servers.front();
         remaining_servers.erase(remaining_servers.begin());
 
-        // Find all servers with the same host and port
-        std::vector<ServerConfig> grouped_servers;
-        grouped_servers.push_back(current);
+        std::string hostname_port_key = current.server_name + ":" + std::to_string(current.listen_port);
 
-        auto it = remaining_servers.begin();
-        while (it != remaining_servers.end()) {
-            if (compareHostPort(current, *it)) {
-                grouped_servers.push_back(*it);
-                it = remaining_servers.erase(it);
-            } else {
-                ++it;
-            }
+        // Check for duplicate port/hostname usage
+        if (hostname_port_map[current.server_name].count(current.listen_port) > 0) {
+            std::cerr << "Error: Duplicate server block for " << current.server_name 
+                      << " on port " << current.listen_port << " already in use." << std::endl;
+            exit(EXIT_FAILURE);
         }
 
-        // Create socket for this host and port
+        // Add hostname and port to map to track usage
+        hostname_port_map[current.server_name].insert(current.listen_port);
+
+        // Check if the port is already in use (but allow it for different hostnames)
+        if (used_ports.find(current.listen_port) != used_ports.end()) {
+            if (current.server_name.empty()) {
+                std::cerr << "Error: Multiple server blocks are using port " << current.listen_port
+                          << " without unique hostnames." << std::endl;
+                exit(EXIT_FAILURE);
+            }
+        } else {
+            // Mark the port as used
+            used_ports.insert(current.listen_port);
+        }
+
+        // Continue setting up the socket as usual
         int sock = socket(AF_INET, SOCK_STREAM, 0);
         if (sock == -1) {
             exit(EXIT_FAILURE);
@@ -89,8 +101,8 @@ void Server::CreateListeningSockets(const std::vector<ServerConfig> &servers)
         }
 
         if (bind(sock, (struct sockaddr*)&_address, sizeof(_address)) == -1) {
-            std::cerr << RED << "Error: bind failed for " << current.listen_host << ":" << current.listen_port << RESET << std::endl;
-            std::cout << BLUE << "  Check the IP address and port" << RESET << std::endl;
+            std::cerr << RED << "Error: bind failed for " << current.listen_host 
+                      << ":" << current.listen_port << RESET << std::endl;
             close(sock);
             exit(EXIT_FAILURE);
         }
@@ -106,11 +118,12 @@ void Server::CreateListeningSockets(const std::vector<ServerConfig> &servers)
         ls.sock_fd = sock;
         ls.host = current.listen_host;
         ls.port = current.listen_port;
-        ls.configs = grouped_servers; // First server is default
-
+        ls.configs.push_back(current);  // Add the current server config
         _listening_sockets.push_back(ls);
     }
 }
+
+
 
 void Server::EpollCreate()
 {
@@ -187,33 +200,11 @@ void Server::EpollWait(const std::vector<ServerConfig> &servers)
                     // Optionally, log the new connection
                     char client_ip[INET_ADDRSTRLEN];
                     inet_ntop(AF_INET, &(client_addr.sin_addr), client_ip, INET_ADDRSTRLEN);
-                    // std::cout << "Accepted connection from " << client_ip << ":" << ntohs(client_addr.sin_port) << " (fd: " << client_fd << ")" << std::endl;
                 }
             } else {
                 // Handle client events
                 if (events & EPOLLIN) {
-                    // Find which listening socket this client is associated with
-                    std::unordered_map<int, ClientContext>::iterator it = _clients.find(fd);
-                    if (it == _clients.end()) {
-                        CloseClient(fd);
-                        continue;
-                    }
-                    ClientContext &client = it->second;
-
-                    // Find the listening socket based on listening_socket_fd
-                    ListeningSocket *ls = NULL;
-                    for (size_t i = 0; i < _listening_sockets.size(); ++i) {
-                        if (_listening_sockets[i].sock_fd == client.listening_socket_fd) {
-                            ls = &_listening_sockets[i];
-                            break;
-                        }
-                    }
-                    if (!ls) {
-                        CloseClient(fd);
-                        continue;
-                    }
-
-                    HandleClientRead(fd, ls->configs);
+                    HandleClientRead(fd, servers);
                 }
                 if (events & EPOLLOUT) {
                     HandleClientWrite(fd);
@@ -226,72 +217,80 @@ void Server::EpollWait(const std::vector<ServerConfig> &servers)
     }
 }
 
-void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &configs)
-{
-    std::unordered_map<int, ClientContext>::iterator it = _clients.find(client_fd);
+void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &configs) {
+    auto it = _clients.find(client_fd);
     if (it == _clients.end()) {
-        // Handle error: client_fd not found in _clients
         CloseClient(client_fd);
         return;
     }
     ClientContext &client = it->second;
 
     char buffer[4096];
-    while (true) {
-        ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer));
-        if (bytes_read > 0) {
-            client.read_buffer.append(buffer, bytes_read);
-        } else if (bytes_read == 0) {
-            // Connection closed by client
-            CloseClient(client_fd);
-            return;
-        } else {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                // No more data to read
-                break;
-            } else {
-                CloseClient(client_fd);
-                return;
-            }
-        }
+    ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer));
+    if (bytes_read > 0) {
+        client.read_buffer.append(buffer, bytes_read);
+    } else if (bytes_read == 0 || (bytes_read == -1 && errno != EAGAIN && errno != EWOULDBLOCK)) {
+        CloseClient(client_fd);
+        return;
     }
 
     // Check if the request headers have been fully received
     size_t pos = client.read_buffer.find("\r\n\r\n");
     if (pos != std::string::npos) {
-        // Headers have been received; check for Content-Length
-        size_t content_length = HeaderParser::getContentLength(client.read_buffer);
-        if (client.read_buffer.size() >= pos + 4 + content_length) {
-            // Full request has been received
-            // Create a Request object and parse
-            Request request(configs, client.read_buffer);
-            request.ParseRequest();
+        // Parse the Host header from the request
+        std::string host_header = HeaderParser::getHost(client.read_buffer);
 
-            if (request.isResponseReady()) {
-                client.write_buffer = request.getResponse();
-                // Modify epoll to watch for EPOLLOUT only
-                _event.events = EPOLLOUT | EPOLLET;
-                _event.data.fd = client_fd;
-                if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, client_fd, &_event) == -1) {
-                    CloseClient(client_fd);
-                }
-                return;
-            }
+        std::cout << "Received request for Host: " << host_header << std::endl;
 
-            // If response is not ready yet, keep EPOLLIN and EPOLLOUT
-            client.write_buffer = request.getResponse();
-            _event.events = EPOLLIN | EPOLLOUT | EPOLLET;
-            _event.data.fd = client_fd;
-            if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, client_fd, &_event) == -1) {
-                CloseClient(client_fd);
+        // Find the correct listening socket by matching the client's listening socket fd
+        ListeningSocket* matched_socket = nullptr;
+        for (size_t i = 0; i < _listening_sockets.size(); ++i) {
+            if (_listening_sockets[i].sock_fd == client.listening_socket_fd) {
+                matched_socket = &_listening_sockets[i];
+                break;
             }
+        }
+
+        if (!matched_socket) {
+            // If no socket match found, close the client
+            CloseClient(client_fd);
+            return;
+        }
+
+        // Match the server configuration by host (Host header) and port (listen_port)
+        const ServerConfig* matched_config = nullptr;
+        for (const ServerConfig &config : matched_socket->configs) {
+            if (config.server_name == host_header) {
+                matched_config = &config;
+                break;
+            }
+        }
+
+        if (!matched_config) {
+            // If no match, fallback to the first configuration (default behavior)
+            matched_config = &matched_socket->configs[0];
+        }
+
+        // Handle request with the matched configuration
+        std::vector<ServerConfig> matched_configs = {*matched_config};
+        Request request(matched_configs, client.read_buffer);
+        request.ParseRequest();
+
+        client.write_buffer = request.getResponse();
+        _event.events = EPOLLOUT | EPOLLET;
+        _event.data.fd = client_fd;
+        if (epoll_ctl(_epoll_fd, EPOLL_CTL_MOD, client_fd, &_event) == -1) {
+            CloseClient(client_fd);
         }
     }
 }
 
+
+
+
 void Server::HandleClientWrite(int client_fd)
 {
-    std::unordered_map<int, ClientContext>::iterator it = _clients.find(client_fd);
+    auto it = _clients.find(client_fd);
     if (it == _clients.end()) {
         CloseClient(client_fd);
         return;
@@ -299,29 +298,17 @@ void Server::HandleClientWrite(int client_fd)
     ClientContext &client = it->second;
 
     if (client.write_buffer.empty()) {
-        // No data to send
         return;
     }
 
-    while (!client.write_buffer.empty()) {
-        ssize_t bytes_written = write(client_fd, client.write_buffer.c_str(), client.write_buffer.size());
-        if (bytes_written > 0) {
-            client.write_buffer.erase(0, bytes_written);
-        } else if (bytes_written == -1) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                // Cannot write more now
-                break;
-            } else {
-                CloseClient(client_fd);
-                return;
-            }
-        }
+    ssize_t bytes_written = write(client_fd, client.write_buffer.c_str(), client.write_buffer.size());
+    if (bytes_written > 0) {
+        client.write_buffer.erase(0, bytes_written);
+    } else if (bytes_written == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
+        CloseClient(client_fd);
     }
 
     if (client.write_buffer.empty()) {
-        // Response has been fully sent
-        // Optionally, implement keep-alive by resetting read_buffer and write_buffer
-        // For simplicity, we'll close the connection
         CloseClient(client_fd);
     }
 }

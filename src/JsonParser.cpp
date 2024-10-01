@@ -211,7 +211,6 @@ ServerConfig JsonParser::parseServerConfig() {
     ServerConfig server;
     bool has_listen_host = false;
     bool has_listen_port = false;
-    bool has_server_name = false;
 
     expect('{');
 
@@ -228,7 +227,6 @@ ServerConfig JsonParser::parseServerConfig() {
             has_listen_port = true;
         } else if (key == "server_name") {
             server.server_name = getNextString();
-            has_server_name = true;
         } else if (key == "error_pages") {
             server.error_pages = parseErrorPages();
         } else if (key == "client_max_body_size") {
@@ -264,9 +262,6 @@ ServerConfig JsonParser::parseServerConfig() {
     }
     if (!has_listen_port) {
         throw std::runtime_error("Error: Missing required field 'listen_port' in server config");
-    }
-    if (!has_server_name) {
-        throw std::runtime_error("Error: Missing required field 'server_name' in server config");
     }
 
     return server;
