@@ -35,3 +35,6 @@ uploads/
 
 # Logs
 *.log
+
+# Test
+test.sh
