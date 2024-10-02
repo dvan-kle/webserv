@@ -11,6 +11,7 @@
 #include <iostream>
 #include <cerrno>
 #include <set>
+#include <map>
 
 // Utility function to compare host and port
 bool compareHostPort(const ServerConfig &a, const ServerConfig &b) {
@@ -41,8 +42,8 @@ void Server::SetNonBlocking(int sock) {
 
 void Server::CreateListeningSockets(const std::vector<ServerConfig> &servers)
 {
-    std::set<int> used_ports;
-    std::unordered_map<std::string, std::set<int>> hostname_port_map;  // Track hostnames per port
+    std::set<std::pair<std::string, int>> used_port_host_pairs;  // Track used host:port combinations
+    std::map<int, std::set<std::string>> port_to_hostnames;      // Map from port to a set of hostnames
 
     std::vector<ServerConfig> remaining_servers = servers;
 
@@ -50,70 +51,83 @@ void Server::CreateListeningSockets(const std::vector<ServerConfig> &servers)
         ServerConfig current = remaining_servers.front();
         remaining_servers.erase(remaining_servers.begin());
 
-        std::string hostname_port_key = current.server_name + ":" + std::to_string(current.listen_port);
+        std::pair<std::string, int> host_port_key = std::make_pair(current.listen_host, current.listen_port);
 
-        // Check for duplicate port/hostname usage
-        if (hostname_port_map[current.server_name].count(current.listen_port) > 0) {
-            std::cerr << "Error: Duplicate server block for " << current.server_name 
-                      << " on port " << current.listen_port << " already in use." << std::endl;
-            exit(EXIT_FAILURE);
-        }
-
-        hostname_port_map[current.server_name].insert(current.listen_port);
-
-        if (used_ports.find(current.listen_port) != used_ports.end()) {
+        // Check if the port and host combination is already in use
+        if (used_port_host_pairs.find(host_port_key) != used_port_host_pairs.end()) {
+            // If the port and host are in use, check the server_name logic
             if (current.server_name.empty()) {
-                std::cerr << "Error: Multiple server blocks are using port " << current.listen_port
-                          << " without unique hostnames." << std::endl;
+                // If the current server has no server_name, it's an error (port + host without server_name already used)
+                std::cerr << RED << "Error: Multiple server blocks are using port " << current.listen_port
+                          << " and host " << current.listen_host << " without unique hostnames." << RESET << std::endl;
                 exit(EXIT_FAILURE);
             }
+
+            // Check if the same server_name is also already in use for this port
+            if (port_to_hostnames[current.listen_port].count(current.server_name) > 0) {
+                std::cerr << RED << "Error: Duplicate server_name " << current.server_name
+                          << " for port " << current.listen_port << " and host " << current.listen_host << RESET << std::endl;
+                exit(EXIT_FAILURE);
+            }
+
+            // Otherwise, add the server_name to the set of hostnames for this port
+            port_to_hostnames[current.listen_port].insert(current.server_name);
         } else {
-            used_ports.insert(current.listen_port);
+            // Mark the host:port as used
+            used_port_host_pairs.insert(host_port_key);
+
+            // If there's a server_name, register it to the port
+            if (!current.server_name.empty()) {
+                port_to_hostnames[current.listen_port].insert(current.server_name);
+            }
+
+            // Create the socket for this host and port
+            int sock = socket(AF_INET, SOCK_STREAM, 0);
+            if (sock == -1) {
+                exit(EXIT_FAILURE);
+            }
+
+            int opt = 1;
+            if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+                close(sock);
+                exit(EXIT_FAILURE);
+            }
+
+            SetNonBlocking(sock);
+
+            memset(&_address, 0, sizeof(_address));
+            _address.sin_family = AF_INET;
+            _address.sin_port = htons(current.listen_port);
+
+            if (inet_pton(AF_INET, current.listen_host.c_str(), &_address.sin_addr) <= 0) {
+                std::cerr << RED << "Error: Invalid IP address " << current.listen_host << RESET << std::endl;
+                close(sock);
+                exit(EXIT_FAILURE);
+            }
+
+            if (bind(sock, (struct sockaddr*)&_address, sizeof(_address)) == -1) {
+                std::cerr << RED << "Error: bind failed for " << current.listen_host 
+                          << ":" << current.listen_port << RESET << std::endl;
+                close(sock);
+                exit(EXIT_FAILURE);
+            }
+
+            if (listen(sock, 4096) == -1) {
+                close(sock);
+                exit(EXIT_FAILURE);
+            }
+
+            // Store the listening socket information
+            ListeningSocket ls;
+            ls.sock_fd = sock;
+            ls.host = current.listen_host;
+            ls.port = current.listen_port;
+            ls.configs.push_back(current);
+            _listening_sockets.push_back(ls);
         }
-
-        int sock = socket(AF_INET, SOCK_STREAM, 0);
-        if (sock == -1) {
-            exit(EXIT_FAILURE);
-        }
-
-        int opt = 1;
-        if (setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
-            close(sock);
-            exit(EXIT_FAILURE);
-        }
-
-        SetNonBlocking(sock);
-
-        memset(&_address, 0, sizeof(_address));
-        _address.sin_family = AF_INET;
-        _address.sin_port = htons(current.listen_port);
-
-        if (inet_pton(AF_INET, current.listen_host.c_str(), &_address.sin_addr) <= 0) {
-            std::cerr << "Error: Invalid IP address " << current.listen_host << std::endl;
-            close(sock);
-            exit(EXIT_FAILURE);
-        }
-
-        if (bind(sock, (struct sockaddr*)&_address, sizeof(_address)) == -1) {
-            std::cerr << RED << "Error: bind failed for " << current.listen_host 
-                      << ":" << current.listen_port << RESET << std::endl;
-            close(sock);
-            exit(EXIT_FAILURE);
-        }
-
-        if (listen(sock, 4096) == -1) {
-            close(sock);
-            exit(EXIT_FAILURE);
-        }
-
-        ListeningSocket ls;
-        ls.sock_fd = sock;
-        ls.host = current.listen_host;
-        ls.port = current.listen_port;
-        ls.configs.push_back(current);
-        _listening_sockets.push_back(ls);
     }
 }
+
 
 void Server::EpollCreate()
 {
@@ -220,22 +234,21 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
         }
     }
 
+    // Detect the end of headers
     size_t header_end_pos = client.read_buffer.find("\r\n\r\n");
     if (header_end_pos != std::string::npos) {
         size_t content_length = HeaderParser::getContentLength(client.read_buffer);
         if (client.read_buffer.size() >= header_end_pos + 4 + content_length) {
+            
             ListeningSocket* matched_socket = FindListeningSocket(client.listening_socket_fd);
             if (!matched_socket) {
                 CloseClient(client_fd);
                 return;
             }
 
-            const ServerConfig* matched_config = FindMatchedConfig(matched_socket, HeaderParser::getHost(client.read_buffer));
-            if (!matched_config) {
-                matched_config = &matched_socket->configs[0];
-            }
+            int port = matched_socket->port;  // Pass the correct port
 
-            Request request({*matched_config}, client.read_buffer);
+            Request request(configs, client.read_buffer, port);  // Pass port to Request
             request.ParseRequest();
 
             client.write_buffer = request.getResponse();
@@ -247,6 +260,8 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
         }
     }
 }
+
+
 
 void Server::HandleClientWrite(int client_fd)
 {
@@ -280,15 +295,15 @@ void Server::CloseClient(int client_fd)
     _clients.erase(client_fd);
 }
 
-ListeningSocket* Server::FindListeningSocket(int listening_socket_fd)
-{
+ListeningSocket* Server::FindListeningSocket(int listening_socket_fd) {
     for (size_t i = 0; i < _listening_sockets.size(); ++i) {
         if (_listening_sockets[i].sock_fd == listening_socket_fd) {
-            return &_listening_sockets[i];
+            return &_listening_sockets[i];  // Return the matched listening socket
         }
     }
     return nullptr;
 }
+
 
 const ServerConfig* Server::FindMatchedConfig(ListeningSocket* listening_socket, const std::string &host)
 {

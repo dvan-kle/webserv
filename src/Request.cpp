@@ -46,8 +46,8 @@ bool hasFileExtension(const std::string& url) {
     return std::regex_search(url, fileExtensionRegex);
 }
 
-Request::Request(const std::vector<ServerConfig> &configs, const std::string &request_data)
-    : _configs(configs), _request(request_data) // Initialize _configs
+Request::Request(const std::vector<ServerConfig> &configs, const std::string &request_data, int port)
+    : _configs(configs), _request(request_data), _port(port) // Initialize _configs
 {
     // Select the appropriate ServerConfig based on Host header
     // This will be done in ParseRequest
@@ -57,29 +57,39 @@ Request::~Request() {
     // Destructor logic if needed
 }
 
-ServerConfig* Request::selectServerConfig(const std::string &host_header)
-{
+ServerConfig* Request::selectServerConfig(const std::string &host_header, int port) {
     if (_configs.empty()) {
         std::cerr << "No server configurations available" << std::endl;
         return nullptr;
     }
 
-    if (host_header.empty()) {
-        return &const_cast<ServerConfig&>(_configs[0]); // Default server
-    }
 
+    // Match based on server_name (Host header) and port
     for (size_t i = 0; i < _configs.size(); ++i) {
-        if (_configs[i].server_name == host_header) {
+        if (_configs[i].server_name == host_header && _configs[i].listen_port == port) {
+            std::cout << "Matched server_name: " << _configs[i].server_name 
+                      << " on port " << _configs[i].listen_port << std::endl;
             return &const_cast<ServerConfig&>(_configs[i]);
         }
     }
 
-    // If no matching server_name, return default
-    return &const_cast<ServerConfig&>(_configs[0]);
+    // Fallback: return first config that matches the port
+    for (size_t i = 0; i < _configs.size(); ++i) {
+        if (_configs[i].listen_port == port) {
+            return &const_cast<ServerConfig&>(_configs[i]);
+        }
+    }
+
+    return &const_cast<ServerConfig&>(_configs[0]);  // Fallback to the first config
 }
 
+
+
+
+
+
 void Request::ParseRequest() {
-    // Use HeaderParser to parse headers and body
+    // Parse the headers and body
     std::pair<std::string, std::string> headersAndBody = HeaderParser::parseHeaders(_request);
     _headers = headersAndBody.first;
     _body = headersAndBody.second;
@@ -95,16 +105,20 @@ void Request::ParseRequest() {
         std::string requestLine = _headers.substr(0, line_end_pos);
         ParseLine(requestLine);
 
-        // Extract Host header
+        // Extract the Host header
         std::string host_header = HeaderParser::getHost(_headers);
 
-        // Select the appropriate ServerConfig
-        ServerConfig* selected_config = selectServerConfig(host_header);
+        // Here, instead of using a default of port 80, you should use the `_port` passed from the server
+        int port = _port;  // Use the passed-in port instead of defaulting to 80
+
+        // Select the appropriate server config
+        ServerConfig* selected_config = selectServerConfig(host_header, port);
         if (selected_config == nullptr) {
             std::cerr << "No valid server configuration found for host: " << host_header << std::endl;
-            ServeErrorPage(500); // Internal Server Error
+            ServeErrorPage(500);  // Internal Server Error
             return;
         }
+
         _config = *selected_config;
 
         // After selecting _config, you can proceed as before
@@ -324,9 +338,11 @@ void Request::responseHeader(const std::string &content, const std::string &stat
 
     _response += "Content-Length: " + std::to_string(content.size()) + "\r\n";
     _response += "Date: " + getCurrentTimeHttpFormat() + "\r\n";
-    _response += "Server: " + _config.server_name  + "\r\n\r\n";
-    // Note: Do not append the content here; it is appended separately
+    
+    // Set the correct server name in the response header
+    _response += "Server: " + _config.server_name + "\r\n\r\n";  // Use the matched config's server_name
 }
+
 
 std::string Request::getStatusMessage(int statuscode)
 {
