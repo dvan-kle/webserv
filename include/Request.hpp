@@ -95,7 +95,7 @@ class Request
         void sendHtmlResponse(const std::string &htmlContent);
 
         // Directory Listing and Auto-Indexing
-        std::string ServeAutoIndex(const std::string& directoryPath, const std::string& url, const std::string& host, int port);
+        void ServeAutoIndex(const std::string& directoryPath, const std::string& url, const std::string& host, int port, LocationConfig* location);
 
         // URL Redirection
         void sendRedirectResponse(const std::string &redirection_url, int return_code);
