@@ -198,6 +198,12 @@ void Request::HandleRequest() {
     }
 }
 
+bool Request::isMethodAllowed(LocationConfig* location, const std::string& method) {
+    if (location->methods.empty())
+        return true;  // Allow all methods if none are specified
+    return std::find(location->methods.begin(), location->methods.end(), method) != location->methods.end();
+}
+
 
 
 /* ------------------------------ *\
@@ -233,6 +239,11 @@ void Request::HandleGetRequest() {
     }
 
     ServeFileOrDirectory(filePath, location);
+}
+
+bool Request::hasFileExtension(const std::string& url) {
+    static const std::regex fileExtensionRegex(R"(\.[a-zA-Z0-9]+$)");
+    return std::regex_search(url, fileExtensionRegex);
 }
 
 void Request::HandlePostRequest(const std::string &requestBody) {
