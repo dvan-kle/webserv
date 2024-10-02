@@ -7,7 +7,6 @@ INC_DIR = include
 
 SOURCES = \
 	src/AutoIndex.cpp \
-	src/BodyParser.cpp \
 	src/CGI.cpp \
 	src/Delete.cpp \
 	src/Errors.cpp \

@@ -39,6 +39,26 @@ class Request
         // Updated method signature
         ServerConfig* selectServerConfig(const std::string &host_header);
 
+        // Header Parsing and Request Handling
+        void ParseHeadersAndBody(); // Split headers and body parsing logic
+        std::string ExtractRequestLine(); // Extract the request line from headers
+        void HandleRequest(); // Handle request after selecting the config
+
+        // URL Parsing and Normalization
+        void ParseLine(const std::string &line);
+        void NormalizeURL();
+
+        // Response Handling
+        void SendResponse(const std::string &requestBody);
+        void HandleGetRequest(); // Handle GET requests
+        void HandlePostRequest(const std::string &requestBody); // Handle POST requests
+        void HandleDeleteRequest(); // Handle DELETE requests
+
+        // File and Directory Handling
+        void ServeFileOrDirectory(const std::string &filePath, LocationConfig* location); // Handle file or directory requests
+        void HandleDirectoryRequest(const std::string &filePath, LocationConfig* location); // Handle directory requests
+        void ServeFile(const std::string &filePath); // Serve a file to the client
+
     public:
         // Updated constructor to initialize _configs
         Request(const std::vector<ServerConfig> &configs, const std::string &request_data, int port);
@@ -46,20 +66,20 @@ class Request
         Request &operator=(const Request &src) = delete;
         ~Request();
 
-        void ParseRequest();
-        void ParseLine(const std::string &line);
+        // Main Request Parsing and Execution
+        void ParseRequest(); 
 
-        void SendResponse(const std::string &requestBody);
-        void GetResponse();
-        void PostResponse(const std::string &requestBody);
-        void DeleteResponse();
-
+        // CGI and Method Utilities
         void executeCGI(std::string path, std::string method, std::string body);
         bool isCgiRequest(std::string path);
 
+        // Response Utilities
         void responseHeader(const std::string &content, const std::string &status_code);
+        void ServeErrorPage(int error_code);
 
-        ssize_t convertMaxBodySize(const std::string &input);
+        // Additional Helpers for POST, DELETE, and Response Handling
+        void PostResponse(const std::string &requestBody);
+        void DeleteResponse();
         void handleFormUrlEncoded(const std::string &requestBody);
         void handlePlainText(const std::string &requestBody);
         void handleJson(const std::string &requestBody);
@@ -67,22 +87,24 @@ class Request
         void handleUnsupportedContentType();
         void sendHtmlResponse(const std::string &htmlContent);
 
-        void ServeErrorPage(int error_code);
+        // Directory Listing and Auto-Indexing
+        std::string ServeAutoIndex(const std::string& directoryPath, const std::string& url, const std::string& host, int port);
+
+        // URL Redirection
+        void sendRedirectResponse(const std::string &redirection_url, int return_code);
+
+        // Utilities
+        ssize_t convertMaxBodySize(const std::string &input);
+        std::string getCurrentTimeHttpFormat();
+        bool hasFileExtension(const std::string& url);
+        void createDir(const std::string &path);
+
+        // Location and Method Utilities
         LocationConfig* findLocation(const std::string& url);
         bool isMethodAllowed(LocationConfig* location, const std::string& method);
 
-        std::string generateDirectoryListing(const std::string& directoryPath, const std::string& host, int port);
-
-        void sendRedirectResponse(const std::string &redirection_url, int return_code);
-
-        void createDir(const std::string &path);
-
-        void NormalizeURL();
-
+        // Response Readiness
         bool isResponseReady() const { return _response_ready; }
         std::string getResponse() const { return _response; }
-
-        std::string getCurrentTimeHttpFormat();
-
-        bool hasFileExtension(const std::string& url);
 };
+
