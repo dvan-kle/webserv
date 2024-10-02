@@ -175,7 +175,8 @@ void Server::EpollWait(const std::vector<ServerConfig> &servers) {
     while (true) {
         int nfds = epoll_wait(_epoll_fd, _events, MAX_EVENTS, -1);
         if (nfds == -1) {
-            if (errno == EINTR) continue;  // Restart loop if interrupted by a signal
+            if (errno == EINTR)
+                continue;  // Restart loop if interrupted by a signal
             exit(EXIT_FAILURE);
         }
 
