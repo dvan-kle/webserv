@@ -208,6 +208,7 @@ void Server::AcceptConnection(int listening_fd)
     }
 }
 
+// Modified HandleClientRead function without using errno
 void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &configs)
 {
     auto it = _clients.find(client_fd);
@@ -220,17 +221,20 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
     char buffer[4096];
     while (true) {
         ssize_t bytes_read = read(client_fd, buffer, sizeof(buffer));
+
+        // Success case: append the read data to the client's read buffer
         if (bytes_read > 0) {
             client.read_buffer.append(buffer, bytes_read);
-        } else if (bytes_read == 0) {
+        }
+        // Connection closed by the client
+        else if (bytes_read == 0) {
             CloseClient(client_fd);
             return;
-        } else {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) break;
-            else {
-                CloseClient(client_fd);
-                return;
-            }
+        }
+        // Handle the case where no more data is available, break the loop
+        else if (bytes_read < 0) {
+            // No need to check errno; assume this means no more data is available right now
+            break;
         }
     }
 
@@ -239,7 +243,7 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
     if (header_end_pos != std::string::npos) {
         size_t content_length = HeaderParser::getContentLength(client.read_buffer);
         if (client.read_buffer.size() >= header_end_pos + 4 + content_length) {
-            
+
             ListeningSocket* matched_socket = FindListeningSocket(client.listening_socket_fd);
             if (!matched_socket) {
                 CloseClient(client_fd);
@@ -261,8 +265,7 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
     }
 }
 
-
-
+// Modified HandleClientWrite function without using errno
 void Server::HandleClientWrite(int client_fd)
 {
     auto it = _clients.find(client_fd);
@@ -273,20 +276,27 @@ void Server::HandleClientWrite(int client_fd)
     ClientContext &client = it->second;
 
     if (client.write_buffer.empty()) {
-        return;
+        return; // Nothing to write, skip
     }
 
     ssize_t bytes_written = write(client_fd, client.write_buffer.c_str(), client.write_buffer.size());
+
+    // Success case: adjust the write buffer by removing written bytes
     if (bytes_written > 0) {
         client.write_buffer.erase(0, bytes_written);
-    } else if (bytes_written == -1 && errno != EAGAIN && errno != EWOULDBLOCK) {
-        CloseClient(client_fd);
+    }
+    // Handle the case where no data is written, meaning the socket is not ready for writing
+    else if (bytes_written < 0) {
+        // If write fails, assume the socket isn't ready; epoll will tell us when to try again
+        return;
     }
 
+    // If the buffer is empty after writing, close the connection
     if (client.write_buffer.empty()) {
         CloseClient(client_fd);
     }
 }
+
 
 void Server::CloseClient(int client_fd)
 {
