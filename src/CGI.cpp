@@ -353,18 +353,18 @@ bool Request::monitorCgiExecution(pid_t pid, int stdoutPipe, int stderrPipe) {
         }
     }
 
-    // Check if the child process exited with an error status
+    // check if the child process exited with an error status
     if (WIFEXITED(status) && WEXITSTATUS(status) != 0) {
-        // Log the error exit status
+        // log the error exit status
         std::cerr << "CGI script exited with status " << WEXITSTATUS(status) << std::endl;
-        // Capture and process the CGI output (both stdout and stderr)
+        // capture and process the CGI output (both stdout and stderr)
         processCgiOutput(stdoutPipe, stderrPipe);
-        return false;  // Return failure due to non-zero exit status
+        return false; // return failure due to non-zero exit status
     }
 
-    // If the process finished successfully, process the CGI output and errors
+    // if the process finished successfully, process the CGI output and errors
     processCgiOutput(stdoutPipe, stderrPipe);
-    return true;  // Return success
+    return true; // return success
 }
 
 // process the output from the CGI script and prepare the HTTP response

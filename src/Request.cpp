@@ -197,7 +197,7 @@ void Request::HandleRequest() {
     }
 }
 
-// Check if the HTTP method is allowed for the location
+// check if the HTTP method is allowed for the location
 bool Request::isMethodAllowed(LocationConfig* location, const std::string& method) {
     if (location->methods.empty())
         // allow all methods if none are specified
