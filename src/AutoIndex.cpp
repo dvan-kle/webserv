@@ -1,8 +1,8 @@
-#include "../include/AutoIndex.hpp"
+#include "../include/Request.hpp"
 #include <sstream>
 #include <dirent.h>
 
-std::string AutoIndex::generateDirectoryListing(const std::string& directoryPath, const std::string& url, const std::string& host, int port) {
+std::string Request::ServeAutoIndex(const std::string& directoryPath, const std::string& url, const std::string& host, int port) {
     std::ostringstream html;
     html << "<html><head><title>Directory Listing</title></head><body>";
     html << "<h1>Index of " << url << "</h1>";

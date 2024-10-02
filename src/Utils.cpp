@@ -56,29 +56,3 @@ LocationConfig* Request::findLocation(const std::string& url) {
 
     return best_match;
 }
-
-ServerConfig* Request::selectServerConfig(const std::string &host_header) {
-    if (_configs.empty()) {
-        std::cerr << "No server configurations available" << std::endl;
-        return nullptr;
-    }
-
-
-    // Match based on server_name (Host header) and port
-    for (size_t i = 0; i < _configs.size(); ++i) {
-        if (_configs[i].server_name == host_header && _configs[i].listen_port == _port) {
-            std::cout << "Matched server_name: " << _configs[i].server_name 
-                      << " on port " << _configs[i].listen_port << std::endl;
-            return &const_cast<ServerConfig&>(_configs[i]);
-        }
-    }
-
-    // Fallback: return first config that matches the port
-    for (size_t i = 0; i < _configs.size(); ++i) {
-        if (_configs[i].listen_port == _port) {
-            return &const_cast<ServerConfig&>(_configs[i]);
-        }
-    }
-
-    return &const_cast<ServerConfig&>(_configs[0]);  // Fallback to the first config
-}

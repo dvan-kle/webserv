@@ -1,7 +1,6 @@
 #include "Request.hpp"
 #include "Header.hpp"
 #include "Redirect.hpp"
-#include "AutoIndex.hpp"
 #include "BodyParser.hpp"
 #include <iomanip>
 #include <regex>
@@ -11,80 +10,70 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
+
+
+/* ------------------------- *\
+|-----------Request-----------|
+\* ------------------------- */
+
 Request::Request(const std::vector<ServerConfig> &configs, const std::string &request_data, int port): _configs(configs), _request(request_data), _port(port) {}
 
 Request::~Request() {}
 
-void Request::ParseRequest() {
-    // Parse the headers and body
-    std::pair<std::string, std::string> headersAndBody = Header::parseHeaders(_request);
-    _headers = headersAndBody.first;
-    _body = headersAndBody.second;
 
+
+/* ------------------------------ *\
+|-----------ParseRequest-----------|
+\* ------------------------------ */
+
+void Request::ParseRequest() {
+    // Step 1: Parse the headers and body
+    ParseHeadersAndBody();
+
+    // Step 2: Ensure headers are valid
     if (_headers.empty()) {
         ServeErrorPage(400);
         return;
     }
 
-    size_t line_end_pos = _headers.find("\r\n");
-    if (line_end_pos != std::string::npos) {
-        std::string requestLine = _headers.substr(0, line_end_pos);
-        ParseLine(requestLine);
+    // Step 3: Parse the request line
+    std::string requestLine = ExtractRequestLine();
+    ParseLine(requestLine);
 
-        // Extract the Host header
-        std::string host_header = Header::getHost(_headers);
-
-        // Select the appropriate server config
-        ServerConfig* selected_config = selectServerConfig(host_header);
-        if (selected_config == nullptr) {
-            ServeErrorPage(500);
-            return;
-        }
-
-        _config = *selected_config;
-
-        // After selecting _config, you can proceed as before
-        if (_needs_redirect) {
-            sendRedirectResponse(_url, 301);
-            return;
-        }
-
-        auto location = findLocation(_url);
-        if (location == nullptr || !isMethodAllowed(location, _method)) {
-            ServeErrorPage(405);
-            return;
-        }
-
-        if (!location->redirection.empty()) {
-            sendRedirectResponse(location->redirection, location->return_code);
-            return;
-        }
-
-        if (isCgiRequest(_url)) {
-            executeCGI(_url, _method, _body);
-        } else {
-            SendResponse(_body);
-        }
-    } else {
-        ServeErrorPage(400);
-    }
-}
-
-void Request::NormalizeURL() {
-    // If URL is exactly "/", do not modify
-    if (_url == "/") {
+    // Step 4: Select the appropriate server config
+    std::string host_header = Header::getHost(_headers);
+    ServerConfig* selected_config = selectServerConfig(host_header);
+    if (selected_config == nullptr) {
+        ServeErrorPage(500);
         return;
     }
+    _config = *selected_config;
 
-    // Remove all trailing slashes
-    size_t last = _url.find_last_not_of('/');
-    if (last != std::string::npos) {
-        _url = _url.substr(0, last + 1);
-    } else {
-        // URL was all slashes, set to "/"
-        _url = "/";
-    }
+    // Step 5: Handle redirection, location finding, and request handling
+    HandleRequest();
 }
+
+// Split headers and body into two parts
+void Request::ParseHeadersAndBody() {
+    std::pair<std::string, std::string> headersAndBody = Header::parseHeaders(_request);
+    _headers = headersAndBody.first;
+    _body = headersAndBody.second;
+}
+
+// Extract the first line (the request line) from headers
+std::string Request::ExtractRequestLine() {
+    size_t line_end_pos = _headers.find("\r\n");
+    if (line_end_pos != std::string::npos) {
+        return _headers.substr(0, line_end_pos);
+    }
+    return std::string();
+}
+
+
+
+/* --------------------------- *\
+|-----------ParseLine-----------|
+\* --------------------------- */
 
 void Request::ParseLine(const std::string &line) {
     size_t pos = 0;
@@ -127,23 +116,107 @@ void Request::ParseLine(const std::string &line) {
     }
 }
 
+void Request::NormalizeURL() {
+    // If URL is exactly "/", do not modify
+    if (_url == "/") {
+        return;
+    }
+
+    // Remove all trailing slashes
+    size_t last = _url.find_last_not_of('/');
+    if (last != std::string::npos) {
+        _url = _url.substr(0, last + 1);
+    } else {
+        // URL was all slashes, set to "/"
+        _url = "/";
+    }
+}
+
+
+
+/* ------------------------------------ *\
+|-----------selectServerConfig-----------|
+\* ------------------------------------ */
+
+ServerConfig* Request::selectServerConfig(const std::string &host_header) {
+    if (_configs.empty()) {
+        std::cerr << "No server configurations available" << std::endl;
+        return nullptr;
+    }
+
+
+    // Match based on server_name (Host header) and port
+    for (size_t i = 0; i < _configs.size(); ++i) {
+        if (_configs[i].server_name == host_header && _configs[i].listen_port == _port) {
+            std::cout << "Matched server_name: " << _configs[i].server_name 
+                      << " on port " << _configs[i].listen_port << std::endl;
+            return &const_cast<ServerConfig&>(_configs[i]);
+        }
+    }
+
+    // Fallback: return first config that matches the port
+    for (size_t i = 0; i < _configs.size(); ++i) {
+        if (_configs[i].listen_port == _port) {
+            return &const_cast<ServerConfig&>(_configs[i]);
+        }
+    }
+
+    return &const_cast<ServerConfig&>(_configs[0]);  // Fallback to the first config
+}
+
+
+
+/* ------------------------------- *\
+|-----------HandleRequest-----------|
+\* ------------------------------- */
+
+// Handle the flow after selecting the server config (redirection, methods, CGI)
+void Request::HandleRequest() {
+    if (_needs_redirect) {
+        sendRedirectResponse(_url, 301);
+        return;
+    }
+
+    // Find the location based on the URL and check allowed methods
+    auto location = findLocation(_url);
+    if (location == nullptr || !isMethodAllowed(location, _method)) {
+        ServeErrorPage(405);
+        return;
+    }
+
+    // Handle redirection if required by the location configuration
+    if (!location->redirection.empty()) {
+        sendRedirectResponse(location->redirection, location->return_code);
+        return;
+    }
+
+    // Check if the request is for CGI
+    if (isCgiRequest(_url)) {
+        executeCGI(_url, _method, _body);
+    } else {
+        SendResponse(_body);
+    }
+}
+
+
+
+/* ------------------------------ *\
+|-----------SendResponse-----------|
+\* ------------------------------ */
+
 void Request::SendResponse(const std::string &requestBody) {
     if (_method == "GET") {
-        GetResponse();
+        HandleGetRequest();
     } else if (_method == "POST") {
-        if (isCgiRequest(_url)) {
-            executeCGI(_url, _method, requestBody);
-        } else {
-            PostResponse(requestBody);
-        }
+        HandlePostRequest(requestBody);
     } else if (_method == "DELETE") {
-        DeleteResponse();
+        HandleDeleteRequest();
     } else {
         ServeErrorPage(405);
     }
 }
 
-void Request::GetResponse() {
+void Request::HandleGetRequest() {
     auto location = findLocation(_url);
 
     if (location == nullptr) {
@@ -154,12 +227,33 @@ void Request::GetResponse() {
     bool isFile = hasFileExtension(_url);
     std::string filePath = location->root;
 
-    // Only append _url if it's not the root path ("/")
+    // Append URL to file path if it's not the root path ("/")
     if (_url != location->path) {
         filePath += _url;
     }
 
-    // Check if it's a directory
+    ServeFileOrDirectory(filePath, location);
+}
+
+void Request::HandlePostRequest(const std::string &requestBody) {
+    if (isCgiRequest(_url)) {
+        executeCGI(_url, _method, requestBody);
+    } else {
+        PostResponse(requestBody);
+    }
+}
+
+void Request::HandleDeleteRequest() {
+    DeleteResponse();
+}
+
+
+
+/* -------------------------------------- *\
+|-----------ServeFileOrDirectory-----------|
+\* -------------------------------------- */
+
+void Request::ServeFileOrDirectory(const std::string &filePath, LocationConfig* location) {
     struct stat pathStat;
     if (stat(filePath.c_str(), &pathStat) == -1) {
         ServeErrorPage(404);
@@ -167,79 +261,44 @@ void Request::GetResponse() {
     }
 
     if (S_ISDIR(pathStat.st_mode)) {
-        // Directory found, try serving the index file if specified
-        if (!location->index.empty()) {
-            if (filePath.back() != '/') filePath += '/';  // Ensure trailing slash
-            filePath += location->index;  // Append the index file
-
-            // Check if the index file exists and is a regular file
-            struct stat fileStat;
-            if (stat(filePath.c_str(), &fileStat) == -1 || !S_ISREG(fileStat.st_mode)) {
-                // If no index file exists, fall back to autoindex if enabled
-                if (location->autoindex) {
-                    std::string directoryListing = AutoIndex::generateDirectoryListing(location->root, _url, _config.listen_host, _config.listen_port);
-                    sendHtmlResponse(directoryListing);
-                    return;
-                } else {
-                    ServeErrorPage(404);
-                    return;
-                }
-            } else {
-                // Serve the index file directly, avoiding recursive request handling
-                std::ifstream ifstr(filePath, std::ios::binary);
-                if (!ifstr) {
-                    ServeErrorPage(404);
-                    return;
-                }
-
-                std::string content((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
-                responseHeader(content, HTTP_200);
-                _response += content;
-                return;  // Prevent further request handling
-            }
-        } else {
-            // No index file specified, handle with autoindex
-            if (location->autoindex) {
-                std::string directoryListing = AutoIndex::generateDirectoryListing(location->root, _url, _config.listen_host, _config.listen_port);
-                sendHtmlResponse(directoryListing);
-                return;
-            } else {
-                ServeErrorPage(404);
-                return;
-            }
-        }
+        HandleDirectoryRequest(filePath, location);
     } else {
-        // If it's a file, serve the file directly
-        std::ifstream ifstr(filePath, std::ios::binary);
-        if (!ifstr) {
-            ServeErrorPage(404);
-            return;
-        }
-
-        std::string content((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
-        responseHeader(content, HTTP_200);
-        _response += content;
+        ServeFile(filePath);
     }
 }
 
-void Request::responseHeader(const std::string &content, const std::string &status_code)
-{
-    _response = _http_version + " " + status_code + "\r\n";
+void Request::HandleDirectoryRequest(const std::string &filePath, LocationConfig* location) {
+    // Directory found, try serving the index file if specified
+    if (!location->index.empty()) {
+        std::string fullPath = filePath;
+        if (fullPath.back() != '/') fullPath += '/';
+        fullPath += location->index;
 
-    // Determine Content-Type based on URL or default to text/html
-    if (_url.find(".css") != std::string::npos) {
-        _response += "Content-Type: text/css\r\n";
-    } else if (_url.find(".js") != std::string::npos) {
-        _response += "Content-Type: application/javascript\r\n";
-    } else if (_url.find(".json") != std::string::npos) {
-        _response += "Content-Type: application/json\r\n";
+        struct stat fileStat;
+        if (stat(fullPath.c_str(), &fileStat) == -1 || !S_ISREG(fileStat.st_mode)) {
+            if (location->autoindex) {
+                ServeAutoIndex(location->root, _url, _config.listen_host, _config.listen_port);
+            } else {
+                ServeErrorPage(404);
+            }
+        } else {
+            ServeFile(fullPath);
+        }
+    } else if (location->autoindex) {
+        ServeAutoIndex(location->root, _url, _config.listen_host, _config.listen_port);
     } else {
-        _response += "Content-Type: text/html\r\n";
+        ServeErrorPage(404);
+    }
+}
+
+void Request::ServeFile(const std::string &filePath) {
+    std::ifstream ifstr(filePath, std::ios::binary);
+    if (!ifstr) {
+        ServeErrorPage(404);
+        return;
     }
 
-    _response += "Content-Length: " + std::to_string(content.size()) + "\r\n";
-    _response += "Date: " + getCurrentTimeHttpFormat() + "\r\n";
-    
-    // Set the correct server name in the response header
-    _response += "Server: " + _config.server_name + "\r\n\r\n";  // Use the matched config's server_name
+    std::string content((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
+    responseHeader(content, HTTP_200);
+    _response += content;
 }

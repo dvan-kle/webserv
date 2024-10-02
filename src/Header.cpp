@@ -1,4 +1,5 @@
 #include "Header.hpp"
+#include "Request.hpp"
 #include <algorithm>
 #include <cstring>
 
@@ -42,4 +43,26 @@ std::string Header::getHost(const std::string &headers)
         return !std::isspace(ch);
     }).base(), host.end());
     return host;
+}
+
+void Request::responseHeader(const std::string &content, const std::string &status_code)
+{
+    _response = _http_version + " " + status_code + "\r\n";
+
+    // Determine Content-Type based on URL or default to text/html
+    if (_url.find(".css") != std::string::npos) {
+        _response += "Content-Type: text/css\r\n";
+    } else if (_url.find(".js") != std::string::npos) {
+        _response += "Content-Type: application/javascript\r\n";
+    } else if (_url.find(".json") != std::string::npos) {
+        _response += "Content-Type: application/json\r\n";
+    } else {
+        _response += "Content-Type: text/html\r\n";
+    }
+
+    _response += "Content-Length: " + std::to_string(content.size()) + "\r\n";
+    _response += "Date: " + getCurrentTimeHttpFormat() + "\r\n";
+    
+    // Set the correct server name in the response header
+    _response += "Server: " + _config.server_name + "\r\n\r\n";  // Use the matched config's server_name
 }
