@@ -13,33 +13,36 @@ struct ListeningSocket {
     int sock_fd;
     std::string host;
     int port;
-    std::vector<ServerConfig> configs; // Ordered list; first is default
+    // List of server configurations associated with this socket
+    std::vector<ServerConfig> configs;
 };
 
 class ClientContext {
     public:
         int fd;
+        // Buffer for incoming data
         std::string read_buffer;
+        // Buffer for outgoing data
         std::string write_buffer;
         bool header_parsed;
         size_t content_length;
         bool response_ready;
-        int listening_socket_fd; // To identify which listening socket this client is associated with
+        // The listening socket this client is connected through
+        int listening_socket_fd;
 
         // Default constructor
-        ClientContext()
-            : fd(-1), header_parsed(false), content_length(0), response_ready(false), listening_socket_fd(-1) {}
+        ClientContext() : fd(-1), header_parsed(false), content_length(0), response_ready(false), listening_socket_fd(-1) {}
 
         // Constructor with client_fd and listening_socket_fd
-        ClientContext(int client_fd, int listen_fd)
-            : fd(client_fd), header_parsed(false), content_length(0), response_ready(false), listening_socket_fd(listen_fd) {}
+        ClientContext(int client_fd, int listen_fd) : fd(client_fd), header_parsed(false), content_length(0), response_ready(false), listening_socket_fd(listen_fd) {}
 };
 
-class Server
-{
+class Server {
     private:
+        // Stores all listening sockets
         std::vector<ListeningSocket> _listening_sockets;
-        std::unordered_map<int, ClientContext> _clients; // key: client_fd
+        // Map of client_fd to client context
+        std::unordered_map<int, ClientContext> _clients;
         struct sockaddr_in _address;
 
         int _epoll_fd;
@@ -57,9 +60,13 @@ class Server
 
         bool HandleListeningSocket(int fd);
         void AcceptConnection(int listening_fd);
-        ListeningSocket* FindListeningSocket(int listening_socket_fd);
-        const ServerConfig* FindMatchedConfig(ListeningSocket* listening_socket, const std::string &host);
 
+
+        ClientContext* GetClientContext(int client_fd);
+        bool ReadClientData(int client_fd, ClientContext* client);
+        bool IsFullRequestReceived(const ClientContext &client);
+        ListeningSocket* FindListeningSocket(int listening_socket_fd);
+        void ProcessClientRequest(int client_fd, ClientContext* client, const std::vector<ServerConfig> &configs);
     public:
         Server(const std::vector<ServerConfig> &servers);
         Server(const Server &src) = delete;
@@ -68,4 +75,3 @@ class Server
 
         void EpollWait(const std::vector<ServerConfig> &servers);
 };
-
