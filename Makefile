@@ -4,11 +4,26 @@ CFLAGS = -std=c++20 -g
 BUILD_DIR = build
 SRC_DIR = src
 INC_DIR = include
-SOURCES = $(wildcard $(SRC_DIR)/*.cpp)
+
+SOURCES = \
+	src/AutoIndex.cpp \
+	src/BodyParser.cpp \
+	src/CGI.cpp \
+	src/Delete.cpp \
+	src/Errors.cpp \
+	src/Header.cpp \
+	src/JsonParser.cpp \
+	src/Main.cpp \
+	src/Post.cpp \
+	src/Redirect.cpp \
+	src/Request.cpp \
+	src/Server.cpp \
+	src/Utils.cpp \
+
 OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
 
 RED = \033[1;31m
-GREEN = \033[1;32m
+GREEN = \033[1;32m1
 YELLOW = \033[1;33m
 BLUE = \033[1;34m
 RESET = \033[0m

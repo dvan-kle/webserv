@@ -16,8 +16,9 @@ std::string AutoIndex::generateDirectoryListing(const std::string& directoryPath
     struct dirent* entry;
     while ((entry = readdir(dir)) != nullptr) {
         std::string entryName = entry->d_name;
+        // Skip current directory
         if (entryName == ".")
-            continue;  // Skip current directory
+            continue;
 
         html << "<li>" << entryName << "</li>";
     }

@@ -7,7 +7,8 @@ std::string BodyParser::unchunkRequestBody(const std::string& buffer) {
     std::string body;
 
     while (std::getline(stream, line)) {
-        if (line.empty()) continue;  // Skip empty lines
+        if (line.empty())
+            continue;  // Skip empty lines
         int chunkSize = 0;
         std::stringstream hexStream;
         hexStream << std::hex << line;
@@ -16,7 +17,7 @@ std::string BodyParser::unchunkRequestBody(const std::string& buffer) {
         if (chunkSize <= 0) {
             // Read and discard any trailing headers
             while (std::getline(stream, line) && !line.empty()) {}
-            break;  // End of chunked data
+            break; // End of chunked data
         }
 
         // Read the chunk data

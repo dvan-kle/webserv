@@ -3,6 +3,6 @@
 #include <string>
 
 class BodyParser {
-public:
-    static std::string unchunkRequestBody(const std::string& buffer);
+    public:
+        static std::string unchunkRequestBody(const std::string& buffer);
 };

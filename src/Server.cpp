@@ -1,6 +1,6 @@
 #include "Server.hpp"
 #include "Request.hpp"
-#include "HeaderParser.hpp"
+#include "Header.hpp"
 #include "Colors.hpp"
 #include <fcntl.h>
 #include <unistd.h>
@@ -241,7 +241,7 @@ void Server::HandleClientRead(int client_fd, const std::vector<ServerConfig> &co
     // Detect the end of headers
     size_t header_end_pos = client.read_buffer.find("\r\n\r\n");
     if (header_end_pos != std::string::npos) {
-        size_t content_length = HeaderParser::getContentLength(client.read_buffer);
+        size_t content_length = Header::getContentLength(client.read_buffer);
         if (client.read_buffer.size() >= header_end_pos + 4 + content_length) {
 
             ListeningSocket* matched_socket = FindListeningSocket(client.listening_socket_fd);

@@ -1,8 +1,8 @@
-#include "HeaderParser.hpp"
+#include "Header.hpp"
 #include <algorithm>
 #include <cstring>
 
-std::pair<std::string, std::string> HeaderParser::parseHeaders(const std::string &request)
+std::pair<std::string, std::string> Header::parseHeaders(const std::string &request)
 {
     size_t pos = request.find("\r\n\r\n");
     if (pos == std::string::npos) {
@@ -13,7 +13,7 @@ std::pair<std::string, std::string> HeaderParser::parseHeaders(const std::string
     return std::make_pair(headers, body);
 }
 
-size_t HeaderParser::getContentLength(const std::string &headers)
+size_t Header::getContentLength(const std::string &headers)
 {
     size_t pos = headers.find("Content-Length:");
     if (pos == std::string::npos) {
@@ -25,7 +25,7 @@ size_t HeaderParser::getContentLength(const std::string &headers)
     return std::stoi(value);
 }
 
-std::string HeaderParser::getHost(const std::string &headers)
+std::string Header::getHost(const std::string &headers)
 {
     size_t pos = headers.find("Host:");
     if (pos == std::string::npos) {
