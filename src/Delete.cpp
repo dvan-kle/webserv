@@ -23,7 +23,7 @@ std::string getAbsolutePath2(const std::string &path) {
     return std::string(absPath);
 }
 
-void Request::DeleteResponse() {
+void Request::HandleDeleteRequest() {
     // Retrieve the upload path from the location configuration
     auto location = findLocation(_url);
     

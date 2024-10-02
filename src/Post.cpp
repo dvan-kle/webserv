@@ -9,7 +9,6 @@
 #include <cctype>
 #include <map>
 
-
 // Helper function to get absolute path from a relative or absolute one
 std::string getAbsolutePath(const std::string &path) {
     char absPath[PATH_MAX];
@@ -57,7 +56,7 @@ size_t parseBodySize(const std::string& size_str) {
     return body_size * multiplier;
 }
 
-void Request::PostResponse(const std::string &requestBody) {
+void Request::HandlePostRequest(const std::string &requestBody) {
     std::string contentType;
     std::string line;
     std::istringstream headerStream(_headers);

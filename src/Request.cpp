@@ -2,7 +2,6 @@
 #include "Header.hpp"
 
 #include <iomanip>
-#include <regex>
 #include <fstream>
 #include <iostream>
 #include <unistd.h>
@@ -193,122 +192,25 @@ void Request::HandleRequest() {
     if (isCgiRequest(_url)) {
         executeCGI(_url, _method, _body);
     } else {
-        SendResponse(_body);
+        if (_method == "GET") {
+            HandleGetRequest();
+        } else if (_method == "POST") {
+            HandlePostRequest(_body);
+        } else if (_method == "DELETE") {
+            HandleDeleteRequest();
+        } else {
+            ServeErrorPage(405);
+        }
     }
 }
 
 bool Request::isMethodAllowed(LocationConfig* location, const std::string& method) {
     if (location->methods.empty())
         return true;  // Allow all methods if none are specified
-    return std::find(location->methods.begin(), location->methods.end(), method) != location->methods.end();
-}
-
-
-
-/* ------------------------------ *\
-|-----------SendResponse-----------|
-\* ------------------------------ */
-
-void Request::SendResponse(const std::string &requestBody) {
-    if (_method == "GET") {
-        HandleGetRequest();
-    } else if (_method == "POST") {
-        HandlePostRequest(requestBody);
-    } else if (_method == "DELETE") {
-        HandleDeleteRequest();
-    } else {
-        ServeErrorPage(405);
-    }
-}
-
-void Request::HandleGetRequest() {
-    auto location = findLocation(_url);
-
-    if (location == nullptr) {
-        ServeErrorPage(404);
-        return;
-    }
-
-    bool isFile = hasFileExtension(_url);
-    std::string filePath = location->root;
-
-    // Append URL to file path if it's not the root path ("/")
-    if (_url != location->path) {
-        filePath += _url;
-    }
-
-    ServeFileOrDirectory(filePath, location);
-}
-
-bool Request::hasFileExtension(const std::string& url) {
-    static const std::regex fileExtensionRegex(R"(\.[a-zA-Z0-9]+$)");
-    return std::regex_search(url, fileExtensionRegex);
-}
-
-void Request::HandlePostRequest(const std::string &requestBody) {
-    if (isCgiRequest(_url)) {
-        executeCGI(_url, _method, requestBody);
-    } else {
-        PostResponse(requestBody);
-    }
-}
-
-void Request::HandleDeleteRequest() {
-    DeleteResponse();
-}
-
-
-
-/* -------------------------------------- *\
-|-----------ServeFileOrDirectory-----------|
-\* -------------------------------------- */
-
-void Request::ServeFileOrDirectory(const std::string &filePath, LocationConfig* location) {
-    struct stat pathStat;
-    if (stat(filePath.c_str(), &pathStat) == -1) {
-        ServeErrorPage(404);
-        return;
-    }
-
-    if (S_ISDIR(pathStat.st_mode)) {
-        HandleDirectoryRequest(filePath, location);
-    } else {
-        ServeFile(filePath);
-    }
-}
-
-void Request::HandleDirectoryRequest(const std::string &filePath, LocationConfig* location) {
-    // Directory found, try serving the index file if specified
-    if (!location->index.empty()) {
-        std::string fullPath = filePath;
-        if (fullPath.back() != '/') fullPath += '/';
-        fullPath += location->index;
-
-        struct stat fileStat;
-        if (stat(fullPath.c_str(), &fileStat) == -1 || !S_ISREG(fileStat.st_mode)) {
-            if (location->autoindex) {
-                ServeAutoIndex(location->root, _url, _config.listen_host, _config.listen_port);
-            } else {
-                ServeErrorPage(404);
-            }
-        } else {
-            ServeFile(fullPath);
+    for (std::vector<std::string>::iterator it = location->methods.begin(); it != location->methods.end(); ++it) {
+        if (*it == method) {
+            return true;
         }
-    } else if (location->autoindex) {
-        ServeAutoIndex(location->root, _url, _config.listen_host, _config.listen_port);
-    } else {
-        ServeErrorPage(404);
     }
-}
-
-void Request::ServeFile(const std::string &filePath) {
-    std::ifstream ifstr(filePath, std::ios::binary);
-    if (!ifstr) {
-        ServeErrorPage(404);
-        return;
-    }
-
-    std::string content((std::istreambuf_iterator<char>(ifstr)), std::istreambuf_iterator<char>());
-    responseHeader(content, HTTP_200);
-    _response += content;
+    return false;
 }

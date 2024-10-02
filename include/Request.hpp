@@ -49,7 +49,6 @@ class Request
         void NormalizeURL();
 
         // Response Handling
-        void SendResponse(const std::string &requestBody);
         void HandleGetRequest(); // Handle GET requests
         void HandlePostRequest(const std::string &requestBody); // Handle POST requests
         void HandleDeleteRequest(); // Handle DELETE requests
@@ -78,7 +77,6 @@ class Request
         void ServeErrorPage(int error_code);
 
         // Additional Helpers for POST, DELETE, and Response Handling
-        void PostResponse(const std::string &requestBody);
         void DeleteResponse();
         void handleFormUrlEncoded(const std::string &requestBody);
         void handlePlainText(const std::string &requestBody);

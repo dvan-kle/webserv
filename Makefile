@@ -18,6 +18,7 @@ SOURCES = \
 	src/Request.cpp \
 	src/Server.cpp \
 	src/Utils.cpp \
+	src/Get.cpp \
 
 OBJECTS = $(patsubst $(SRC_DIR)/%.cpp,$(BUILD_DIR)/%.o,$(SOURCES))
 
