@@ -8,33 +8,36 @@
 #include <cctype>
 #include <map>
 
-size_t parseBodySize(const std::string& size_str) {
-    size_t multiplier = 1;
-    std::string number_part;
-    
-    // Get the numeric part
-    for (char c : size_str) {
-        if (std::isdigit(c)) {
-            number_part += c;
-        } else {
-            break;
-        }
+#include <regex>
+#include <iostream>
+
+// Convert max body size from the configuration string to an integer (bytes)
+ssize_t Request::convertMaxBodySize(const std::string &input) {
+    // Define a regex pattern for valid formats (e.g., numbers followed by K, M, G, or no unit)
+    std::regex valid_format("^\\d+(K|M|G)?$");
+
+    // Check if the input matches the valid format
+    if (!std::regex_match(input, valid_format)) {
+        std::cerr << "Invalid client_max_body_size format: " << input << std::endl;
+        ServeErrorPage(400);  // Serve 400 Bad Request for invalid format
+        return -1;
     }
 
-    // Parse the numeric part
-    size_t body_size = std::stoull(number_part);
+    // Extract the numeric part
+    ssize_t size = std::stoi(input);
 
-    // Determine the multiplier (K, M, G)
-    if (size_str.find("K") != std::string::npos) {
-        multiplier = 1000;  // Kilobytes
-    } else if (size_str.find("M") != std::string::npos) {
-        multiplier = 1000 * 1000;  // Megabytes
-    } else if (size_str.find("G") != std::string::npos) {
-        multiplier = 1000 * 1000 * 1000;  // Gigabytes
+    // Check for the unit (K, M, G) and adjust the size accordingly
+    if (input.back() == 'K') {
+        size *= 1024;  // Kilobytes to bytes
+    } else if (input.back() == 'M') {
+        size *= 1024 * 1024;  // Megabytes to bytes
+    } else if (input.back() == 'G') {
+        size *= 1024 * 1024 * 1024;  // Gigabytes to bytes
     }
 
-    return body_size * multiplier;
+    return size;
 }
+
 
 void Request::HandlePostRequest(const std::string &requestBody) {
     std::string contentType;
@@ -42,7 +45,10 @@ void Request::HandlePostRequest(const std::string &requestBody) {
     std::istringstream headerStream(_headers);
 
     // Convert the max body size from config
-    size_t maxBodySize = parseBodySize(_config.client_max_body_size);
+    size_t maxBodySize = convertMaxBodySize(_config.client_max_body_size);
+    if (maxBodySize == -1) {
+        return;  // Error page already served by convertMaxBodySize
+    }
 
     // Check Content-Length header
     size_t contentLength = 0;
