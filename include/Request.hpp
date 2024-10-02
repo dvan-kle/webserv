@@ -31,15 +31,17 @@ private:
 
     std::string _headers;
 
+    int _port;
+
     bool _needs_redirect = false;
     bool _response_ready = false;
 
     // Updated method signature
-    ServerConfig* selectServerConfig(const std::string &host_header);
+    ServerConfig* selectServerConfig(const std::string &host_header, int port);
 
 public:
     // Updated constructor to initialize _configs
-    Request(const std::vector<ServerConfig> &configs, const std::string &request_data);
+    Request(const std::vector<ServerConfig> &configs, const std::string &request_data, int port);
     Request(const Request &src) = delete;
     Request &operator=(const Request &src) = delete;
     ~Request();
