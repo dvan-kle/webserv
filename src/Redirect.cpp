@@ -1,5 +1,5 @@
-#include "../include/Redirect.hpp"
 #include "../include/Request.hpp"
+
 #include <sstream>
 #include <ctime>
 #include <iomanip>

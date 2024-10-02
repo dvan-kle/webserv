@@ -1,6 +1,5 @@
 #include "Request.hpp"
 #include "Header.hpp"
-#include "Redirect.hpp"
 
 #include <iomanip>
 #include <regex>
