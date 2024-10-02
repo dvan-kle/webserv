@@ -5,6 +5,7 @@
 #include <sstream>
 #include <string>
 #include <regex>
+#include <limits.h>
 
 std::string Request::getCurrentTimeHttpFormat()
 {
@@ -44,4 +45,23 @@ LocationConfig* Request::findLocation(const std::string& url) {
     }
 
     return best_match;
+}
+
+// Helper function to get absolute path from a relative or absolute one
+std::string Request::getAbsolutePath(const std::string &path) {
+    char absPath[PATH_MAX];
+
+    // If the path starts with "/", it's already absolute, return it as is
+    if (path[0] == '/') {
+        return path;
+    }
+
+    // Otherwise, treat it as relative to the current working directory
+    if (realpath(".", absPath) == nullptr) {
+        std::cerr << "Error resolving current working directory!" << std::endl;
+        return path;  // Return the original path if we can't resolve the current directory
+    }
+
+    // Return the combined absolute path for relative paths
+    return std::string(absPath) + "/" + path;
 }

@@ -104,5 +104,7 @@ class Request
         // Response Readiness
         bool isResponseReady() const { return _response_ready; }
         std::string getResponse() const { return _response; }
+
+        std::string getAbsolutePath(const std::string &path);
 };
 

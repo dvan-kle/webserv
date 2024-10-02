@@ -1,64 +1,75 @@
 #include "JsonParser.hpp"
 
 void JsonParser::skipWhitespace() {
-    // Skips whitespace characters in the input string
+    // skips whitespace characters in the input string
     while (pos_ < input_.length() && std::isspace(input_[pos_])) {
         pos_++;
     }
 }
 
 std::string JsonParser::getNextString() {
-    skipWhitespace();  // Skip any leading whitespace
+    // skip any leading whitespace
+    skipWhitespace();
 
+    // check if we've reached the end of the input while expecting a quote
     if (pos_ >= input_.length()) {
         throw std::runtime_error("Error: Reached end of input while expecting '\"'");
     }
 
+    // ensure the next character is a double quote for the start of the string
     if (input_[pos_] != '"') {
         throw std::runtime_error(std::string("Error: Expected '\"' but found '") + input_[pos_] + "' at position " + std::to_string(pos_));
     }
 
-    expect('"');  // Expect and move past the opening quote
-    size_t start = pos_;  // Mark the start of the string
+    // expect and move past the opening quote
+    expect('"');
+    // mark the start of the string
+    size_t start = pos_;
 
+    // move forward until we find the closing quote
     while (pos_ < input_.length() && input_[pos_] != '"') {
         pos_++;
     }
-
+    // throw an error if the string is not terminated
     if (pos_ >= input_.length()) {
         throw std::runtime_error("Error: Unterminated string");
     }
 
+    // extract the string between the quotes
     std::string result = input_.substr(start, pos_ - start);
-    pos_++;  // Move past the closing quote
+    // move past the closing quote
+    pos_++;
 
     return result;
 }
 
 int JsonParser::getNextInt() {
+    // skip any leading whitespace
     skipWhitespace();
 
-    // Check if we've reached the end of input
+    // check if we've reached the end of the input
     if (pos_ >= input_.length()) {
         throw std::runtime_error("Error: Reached end of input while expecting a number");
     }
 
-    size_t start = pos_;  // Mark the start of the number
+    // mark the start of the number
+    size_t start = pos_;
 
-    // Check for valid numeric characters
+    // check if the current character is a digit or a negative sign
     if (!std::isdigit(input_[pos_]) && input_[pos_] != '-') {
         throw std::runtime_error(std::string("Error: Expected a number but found '") + input_[pos_] + "' at position " + std::to_string(pos_));
     }
 
-    // Move the position forward through digits
+    // move the position forward while characters are digits
     while (pos_ < input_.length() && std::isdigit(input_[pos_])) {
         pos_++;
     }
 
-    // Convert the substring to an integer
+    // extract the substring that represents the number
     std::string int_str = input_.substr(start, pos_ - start);
 
     try {
+        // convert the string to an integer
         return std::stoi(int_str);
     } catch (const std::exception& e) {
         throw std::runtime_error("Error: Failed to convert string to integer");
@@ -66,13 +77,16 @@ int JsonParser::getNextInt() {
 }
 
 bool JsonParser::getNextBool() {
+    // skip leading whitespace
     skipWhitespace();
     
-    // Check for "true" or "false" literals and return the corresponding boolean value
+    // check for "true" or "false" and return the corresponding boolean value
     if (input_.substr(pos_, 4) == "true") {
+        // move past "true"
         pos_ += 4;
         return true;
     } else if (input_.substr(pos_, 5) == "false") {
+        // move past "false"
         pos_ += 5;
         return false;
     } else {
@@ -81,19 +95,27 @@ bool JsonParser::getNextBool() {
 }
 
 std::vector<std::string> JsonParser::getNextStringArray() {
+    // skip leading whitespace
     skipWhitespace();
-    expect('[');  // Expect the opening '[' for the array
+    
+    // expect the opening '[' for the array
+    expect('[');
 
+    // store the resulting strings
     std::vector<std::string> result;
 
     while (true) {
-        result.push_back(getNextString());  // Parse each string in the array
+        // parse each string in the array
+        result.push_back(getNextString());
+        // skip leading whitespace
         skipWhitespace();
 
         if (input_[pos_] == ',') {
-            pos_++;  // Move past the comma
+            // move past the comma
+            pos_++;
         } else if (input_[pos_] == ']') {
-            pos_++;  // End of array
+            // end of array
+            pos_++;
             break;
         } else {
             throw std::runtime_error("Error: Expected ',' or ']' but found another character");
@@ -104,42 +126,55 @@ std::vector<std::string> JsonParser::getNextStringArray() {
 }
 
 void JsonParser::expect(char expected) {
-    skipWhitespace();  // Skip any leading whitespace
+    // skip leading whitespace
+    skipWhitespace();
 
+    // ensure we haven't reached the end of the input
     if (pos_ >= input_.length()) {
         throw std::runtime_error("Error: Reached end of input while expecting a character");
     }
 
+    // check if the current character matches the expected one
     if (input_[pos_] != expected) {
         throw std::runtime_error("Error: Unexpected character");
     }
 
-    pos_++;  // Move past the expected character
+    // move past the expected character
+    pos_++;
 }
 
 std::unordered_map<int, std::string> JsonParser::parseErrorPages() {
-    expect('{');  // Expect the opening brace for the error pages object
-
     std::unordered_map<int, std::string> error_pages;
 
+    // expect the opening brace for the error pages object
+    expect('{');
+
     while (true) {
+        // skip leading whitespace
         skipWhitespace();
 
-        // Extract the error code as a string and convert it to an integer
+        // extract the error code as a string and convert it to an integer
         std::string code_str = getNextString();
         int code = std::stoi(code_str);
 
-        expect(':');  // Expect the colon separating the key and value
+        // expect the colon separating the key and value
+        expect(':');
+
+        // get the page
         std::string page = getNextString();
 
-        error_pages[code] = page;  // Store the error page mapping
+        // store the error page mapping in the unordered map
+        error_pages[code] = page;
 
+        // skip leading whitespace
         skipWhitespace();
 
         if (input_[pos_] == ',') {
-            pos_++;  // Continue parsing the next error page
+            // continue parsing the next error page
+            pos_++;
         } else if (input_[pos_] == '}') {
-            pos_++;  // End of error pages object
+            // end of error pages object
+            pos_++;
             break;
         }
     }
@@ -149,14 +184,21 @@ std::unordered_map<int, std::string> JsonParser::parseErrorPages() {
 
 LocationConfig JsonParser::parseLocationConfig() {
     LocationConfig loc;
-    expect('{');  // Expect the opening brace for the location config
+
+    // expect the opening brace for the location config
+    expect('{');
 
     while (true) {
+        // skip leading whitespace
         skipWhitespace();
-        std::string key = getNextString();  // Parse each key
-        expect(':');  // Expect the colon separator
 
-        // Parse based on the key
+        // parse each key
+        std::string key = getNextString();
+
+        // expect the colon separator
+        expect(':');
+
+        // parse the value based on the key
         if (key == "path") {
             loc.path = getNextString();
         } else if (key == "methods") {
@@ -181,11 +223,16 @@ LocationConfig JsonParser::parseLocationConfig() {
             throw std::runtime_error("Error: Unknown key in location config");
         }
 
+        // skip leading whitespace
         skipWhitespace();
+
+
         if (input_[pos_] == ',') {
+            // continue parsing the next key
             pos_++;
         } else if (input_[pos_] == '}') {
-            pos_++;  // End of location config
+            // End of location config
+            pos_++;
             break;
         }
     }
@@ -195,14 +242,21 @@ LocationConfig JsonParser::parseLocationConfig() {
 
 ServerConfig JsonParser::parseServerConfig() {
     ServerConfig server;
-    expect('{');  // Expect the opening brace for the server config
+
+    // expect the opening brace for the server config
+    expect('{');
 
     while (true) {
+        // skip leading whitespace
         skipWhitespace();
-        std::string key = getNextString();  // Parse each key
+
+        // parse each key
+        std::string key = getNextString();
+
+        // expect the colon separating the key and value
         expect(':');
 
-        // Parse based on the key
+        // parse based on the key
         if (key == "listen_host") {
             server.listen_host = getNextString();
         } else if (key == "listen_port") {
@@ -214,24 +268,36 @@ ServerConfig JsonParser::parseServerConfig() {
         } else if (key == "client_max_body_size") {
             server.client_max_body_size = getNextString();
         } else if (key == "locations") {
-            expect('[');  // Start of locations array
+            // start of locations array
+            expect('[');
+
             while (input_[pos_] != ']') {
+                // parse the next location configuration from the JSON and add it to the server's locations vector
                 server.locations.push_back(parseLocationConfig());
+                
+                // skip leading whitespace
                 skipWhitespace();
+                
                 if (input_[pos_] == ',') {
+                    // continue parsing the next key
                     pos_++;
                 }
             }
-            expect(']');  // End of locations array
+            // end of locations array
+            expect(']');
         } else {
             throw std::runtime_error("Error: Unknown key in server config");
         }
 
+        // skip leading whitespace
         skipWhitespace();
+
         if (input_[pos_] == ',') {
+            // continue parsing the next key
             pos_++;
         } else if (input_[pos_] == '}') {
-            pos_++;  // End of server config
+            // end of server config
+            pos_++;
             break;
         }
     }
@@ -241,32 +307,51 @@ ServerConfig JsonParser::parseServerConfig() {
 
 std::vector<ServerConfig> JsonParser::parse() {
     std::vector<ServerConfig> servers;
-    expect('{');  // Expect the root object to start with a brace
+
+    // expect the root object to start with a brace
+    expect('{');  
 
     while (true) {
+        // skip leading whitespace
         skipWhitespace();
-        std::string key = getNextString();  // Parse each key at the root level
+
+        // parse each key at the root level
+        std::string key = getNextString();  
+
+        // expect the colon separating the key and value
         expect(':');
 
         if (key == "servers") {
-            expect('[');  // Start of servers array
+            // start of servers array
+            expect('[');
+
             while (input_[pos_] != ']') {
+                // parse the next server configuration from the JSON and add it to the server's vector
                 servers.push_back(parseServerConfig());
+
+                // skip leading whitespace
                 skipWhitespace();
+
                 if (input_[pos_] == ',') {
+                    // continue parsing the next key
                     pos_++;
                 }
             }
-            expect(']');  // End of servers array
+            // end of servers array
+            expect(']');
         } else {
             throw std::runtime_error("Error: Unknown key at the root level");
         }
 
+        // skip leading whitespace
         skipWhitespace();
+
         if (input_[pos_] == ',') {
+            // continue parsing
             pos_++;
         } else if (input_[pos_] == '}') {
-            pos_++;  // End of root object
+            // end of root object
+            pos_++;
             break;
         }
     }
