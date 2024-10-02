@@ -8,121 +8,117 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
-
-
-/* ------------------------- *\
-|-----------Request-----------|
-\* ------------------------- */
-
 Request::Request(const std::vector<ServerConfig> &configs, const std::string &request_data, int port): _configs(configs), _request(request_data), _port(port) {}
 
 Request::~Request() {}
 
-
-
-/* ------------------------------ *\
-|-----------ParseRequest-----------|
-\* ------------------------------ */
-
+// parse the incoming HTTP request
 void Request::ParseRequest() {
-    // Step 1: Parse the headers and body
+    // step 1: parse the headers and body
     ParseHeadersAndBody();
 
-    // Step 2: Ensure headers are valid
+    // step 2: ensure headers are valid
     if (_headers.empty()) {
+        // return error if headers are missing
         ServeErrorPage(400);
         return;
     }
 
-    // Step 3: Parse the request line
+    // step 3: parse the request line (GET /path HTTP/1.1)
     std::string requestLine = ExtractRequestLine();
     ParseLine(requestLine);
 
-    // Step 4: Select the appropriate server config
+    // step 4: select the appropriate server configuration based on the Host header
     std::string host_header = Header::getHost(_headers);
     ServerConfig* selected_config = selectServerConfig(host_header);
     if (selected_config == nullptr) {
+        // return error if no config is found
         ServeErrorPage(500);
         return;
     }
+    // save the selected configuration
     _config = *selected_config;
 
-    // Step 5: Handle redirection, location finding, and request handling
+    // step 5: handle redirection, location finding, and request handling
     HandleRequest();
 }
 
-// Split headers and body into two parts
 void Request::ParseHeadersAndBody() {
+    // split the request into headers and body
     std::pair<std::string, std::string> headersAndBody = Header::parseHeaders(_request);
+    // store the headers
     _headers = headersAndBody.first;
+    // store the body
     _body = headersAndBody.second;
 }
 
-// Extract the first line (the request line) from headers
 std::string Request::ExtractRequestLine() {
+    // extract the first line (the request line) from the headers
     size_t line_end_pos = _headers.find("\r\n");
     if (line_end_pos != std::string::npos) {
+        // return the request line
         return _headers.substr(0, line_end_pos);
     }
     return std::string();
 }
 
-
-
-/* --------------------------- *\
-|-----------ParseLine-----------|
-\* --------------------------- */
-
+// parse the request line to extract the method, URL, and HTTP version
 void Request::ParseLine(const std::string &line) {
     size_t pos = 0;
     size_t prev = 0;
 
-    // Extract the HTTP method
+    // extract the HTTP method
     pos = line.find(" ");
     if (pos == std::string::npos) {
         throw std::runtime_error("Error: Invalid HTTP request line (method)");
     }
+    // save the method
     _method = line.substr(prev, pos - prev);
     prev = pos + 1;
 
-    // Extract the URL
+    // extract the URL
     pos = line.find(" ", prev);
     if (pos == std::string::npos) {
         throw std::runtime_error("Error: Invalid HTTP request line (URL)");
     }
+    // save the original URL
     std::string original_url = line.substr(prev, pos - prev);
     prev = pos + 1;
 
-    // Extract the HTTP version
+    // extract the HTTP version
     _http_version = line.substr(prev);
 
-    // Validate HTTP version
+    // validate HTTP version
     if (_http_version.empty() || (_http_version != "HTTP/1.1" && _http_version != "HTTP/1.0")) {
-        _http_version = "HTTP/1.1";  // Default to HTTP/1.1 if missing or invalid
+        // default to HTTP/1.1 if missing or invalid
+        _http_version = "HTTP/1.1";
     }
 
-    // Check if the original URL has a trailing slash (and is not just "/")
+    // check if the original URL has a trailing slash (and is not just "/")
     bool had_trailing_slash = (original_url.length() > 1 && original_url.back() == '/');
 
-    // Normalize the URL by removing trailing slashes
+    // normalize the URL by removing trailing slashes
     _url = original_url;
     NormalizeURL();
 
-    // If the URL had a trailing slash and was normalized, set a flag for redirect
+    // if the URL had a trailing slash and was normalized, set a flag for redirect
     if (had_trailing_slash && _url != original_url) {
-        _needs_redirect = true;
+        // set flag for redirect if URL was normalized
+        _needs_redirect = true; 
     }
 }
 
+// normalize the URL by removing trailing slashes, unless it is "/"
 void Request::NormalizeURL() {
-    // If URL is exactly "/", do not modify
+    // if URL is exactly "/", do not modify
     if (_url == "/") {
         return;
     }
 
-    // Remove all trailing slashes
+    // remove all trailing slashes
     size_t last = _url.find_last_not_of('/');
     if (last != std::string::npos) {
+        // remove trailing slashes
         _url = _url.substr(0, last + 1);
     } else {
         // URL was all slashes, set to "/"
@@ -130,68 +126,64 @@ void Request::NormalizeURL() {
     }
 }
 
-
-
-/* ------------------------------------ *\
-|-----------selectServerConfig-----------|
-\* ------------------------------------ */
-
+// select the correct server configuration based on the Host header
 ServerConfig* Request::selectServerConfig(const std::string &host_header) {
     if (_configs.empty()) {
         std::cerr << "No server configurations available" << std::endl;
         return nullptr;
     }
 
-
-    // Match based on server_name (Host header) and port
+    // match based on server_name (Host header) and port
     for (size_t i = 0; i < _configs.size(); ++i) {
         if (_configs[i].server_name == host_header && _configs[i].listen_port == _port) {
             std::cout << "Matched server_name: " << _configs[i].server_name 
                       << " on port " << _configs[i].listen_port << std::endl;
+            // return matching config
             return &const_cast<ServerConfig&>(_configs[i]);
         }
     }
 
-    // Fallback: return first config that matches the port
+    // fallback: return first config that matches the port
     for (size_t i = 0; i < _configs.size(); ++i) {
         if (_configs[i].listen_port == _port) {
+            // return first matching port conf
             return &const_cast<ServerConfig&>(_configs[i]);
         }
     }
 
-    return &const_cast<ServerConfig&>(_configs[0]);  // Fallback to the first config
+    // fallback to the first config
+    return &const_cast<ServerConfig&>(_configs[0]);
 }
 
-
-
-/* ------------------------------- *\
-|-----------HandleRequest-----------|
-\* ------------------------------- */
-
-// Handle the flow after selecting the server config (redirection, methods, CGI)
+// handle the flow after selecting the server config (redirection, methods, CGI)
 void Request::HandleRequest() {
+    // if the URL was normalized and needs redirection, send a 301 redirect
     if (_needs_redirect) {
         sendRedirectResponse(_url, 301);
         return;
     }
 
-    // Find the location based on the URL and check allowed methods
+    // find the location based on the URL and check allowed methods
     auto location = findLocation(_url);
     if (location == nullptr || !isMethodAllowed(location, _method)) {
+        // return 405 Method Not Allowed if method is not allowed
         ServeErrorPage(405);
         return;
     }
 
-    // Handle redirection if required by the location configuration
+    // handle redirection if required by the location configuration
     if (!location->redirection.empty()) {
+        // handle location redirection
         sendRedirectResponse(location->redirection, location->return_code);
         return;
     }
 
-    // Check if the request is for CGI
+    // check if the request is for CGI
     if (isCgiRequest(_url)) {
+        // execute CGI if applicable
         executeCGI(_url, _method, _body);
     } else {
+        // handle the different HTTP methods (GET, POST, DELETE)
         if (_method == "GET") {
             HandleGetRequest();
         } else if (_method == "POST") {
@@ -199,18 +191,23 @@ void Request::HandleRequest() {
         } else if (_method == "DELETE") {
             HandleDeleteRequest();
         } else {
+            // return 405 Method Not Allowed for unsupported methods
             ServeErrorPage(405);
         }
     }
 }
 
+// Check if the HTTP method is allowed for the location
 bool Request::isMethodAllowed(LocationConfig* location, const std::string& method) {
     if (location->methods.empty())
-        return true;  // Allow all methods if none are specified
+        // allow all methods if none are specified
+        return true;
     for (std::vector<std::string>::iterator it = location->methods.begin(); it != location->methods.end(); ++it) {
         if (*it == method) {
+            // method is allowed
             return true;
         }
     }
+    // method is not allowed
     return false;
 }
