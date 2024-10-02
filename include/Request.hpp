@@ -58,6 +58,15 @@ class Request
         void HandleDirectoryRequest(const std::string &filePath, LocationConfig* location); // Handle directory requests
         void ServeFile(const std::string &filePath); // Serve a file to the client
 
+        // Newly added private methods for handling CGI execution
+        LocationConfig* validateCgiRequest(std::string& path); // Validate CGI request and prepare environment
+        bool setupPipes(int stdinPipe[2], int stdoutPipe[2], int stderrPipe[2]);  // Setup pipes for communication
+        void handleCgiChildProcess(int stdinPipe[2], int stdoutPipe[2], int stderrPipe[2], LocationConfig* location, const std::string& scriptPath, const std::string& method, const std::string& body);  // Handle child process logic
+        bool executeCgiScript(LocationConfig* location, const std::string& scriptPath, char* const envp[]);  // Execute CGI script
+        void handleCgiParentProcess(int stdinPipe[2], int stdoutPipe[2], int stderrPipe[2], const std::string& body, pid_t pid);  // Handle parent process logic
+        void writeBodyToPipe(const std::string& body, int writeFd);  // Write the request body to the CGI script via stdin pipe
+        bool monitorCgiExecution(pid_t pid, int stdoutPipe, int stderrPipe);  // Monitor CGI process and handle timeouts/errors
+        void processCgiOutput(int stdoutPipe, int stderrPipe);  // Process CGI script output and prepare the HTTP response
     public:
         // Updated constructor to initialize _configs
         Request(const std::vector<ServerConfig> &configs, const std::string &request_data, int port);
