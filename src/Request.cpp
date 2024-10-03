@@ -8,8 +8,7 @@
 #include <sys/wait.h>
 #include <sys/stat.h>
 
-Request::Request(const std::vector<ServerConfig> &configs, const std::string &request_data, int port, int epoll_fd)
-    : _configs(configs), _request(request_data), _port(port), _epoll_fd(epoll_fd) {}
+Request::Request(const std::vector<ServerConfig> &configs, const std::string &request_data, int port): _configs(configs), _request(request_data), _port(port) {}
 
 Request::~Request() {}
 

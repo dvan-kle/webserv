@@ -14,6 +14,12 @@
 #include <set>
 #include <map>
 
+
+
+/* ------------------------ *\
+|-----------Server-----------|
+\* ------------------------ */
+
 Server::Server(const std::vector<ServerConfig> &servers) {
     // create sockets for each server block in the config and bind them to their respective ports
     CreateListeningSockets(servers);
@@ -140,20 +146,20 @@ void Server::InitializeSocketAddress(ServerConfig &current) {
 \* ----------------------------- */
 
 void Server::EpollCreate() {
-    _epoll_fd = epoll_create1(0);  // Create epoll instance
+    // create an epoll instance
+    _epoll_fd = epoll_create1(0);
     if (_epoll_fd == -1) {
-        perror("epoll_create1 failed");
         exit(EXIT_FAILURE);
     }
 
-    // Add all listening sockets to epoll
+    // add all listening sockets to the epoll instance to monitor for incoming connections
     for (size_t i = 0; i < _listening_sockets.size(); ++i) {
         ListeningSocket &ls = _listening_sockets[i];
-        _event.events = EPOLLIN | EPOLLET;  // Readable events with edge-triggered mode
-        _event.data.fd = ls.sock_fd;
+        // monitor for readable events with edge-triggered behavior
+        _event.events = EPOLLIN | EPOLLET;
 
+        _event.data.fd = ls.sock_fd;
         if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, ls.sock_fd, &_event) == -1) {
-            perror("epoll_ctl failed");
             close(ls.sock_fd);
             exit(EXIT_FAILURE);
         }
@@ -180,38 +186,8 @@ void Server::EpollWait(const std::vector<ServerConfig> &servers) {
             uint32_t events = _events[n].events;
 
             if (HandleEvent(fd, events, servers)) continue;
-            if (HandleCgiPipe(fd, events)) continue;  // Handle CGI pipes
         }
     }
-}
-
-void Server::CleanUpCgiPipes(int fd) {
-    epoll_ctl(_epoll_fd, EPOLL_CTL_DEL, fd, nullptr);  // Remove from epoll
-    close(fd);  // Close the pipe file descriptor
-    _cgi_pipes.erase(fd);  // Remove from tracking map
-}
-
-bool Server::HandleCgiPipe(int fd, uint32_t events) {
-    auto it = _cgi_pipes.find(fd);
-    if (it == _cgi_pipes.end()) {
-        return false;  // Not a CGI pipe event
-    }
-
-    if (events & EPOLLIN) {
-        // Data is available to read from the pipe
-        char buffer[1024];
-        ssize_t bytes_read = read(fd, buffer, sizeof(buffer));
-        if (bytes_read > 0) {
-            if (it->second.type == CGI_STDOUT) {
-                _clients[it->second.client_fd].write_buffer.append(buffer, bytes_read);
-            } else if (it->second.type == CGI_STDERR) {
-                std::cerr << "CGI STDERR: " << std::string(buffer, bytes_read) << std::endl;
-            }
-        }
-        return true;
-    }
-
-    return false;
 }
 
 // Handle an epoll event (either from a listening socket or a client)
@@ -327,7 +303,7 @@ void Server::ProcessClientRequest(int client_fd, ClientContext* client, const st
     // get the correct port associated with the socket
     int port = matched_socket->port;
     // create request object with config and port
-    Request request(configs, client->read_buffer, port, _epoll_fd);
+    Request request(configs, client->read_buffer, port);
     // parse the request headers and body
     request.ParseRequest();
 

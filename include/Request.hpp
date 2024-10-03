@@ -3,8 +3,6 @@
 #include "JsonParser.hpp"
 #include <string>
 #include <vector>
-#include <stdint.h>
-#include <sys/epoll.h>
 
 const std::string HTTP_200 = "200 OK";
 const std::string HTTP_400 = "400 Bad Request";
@@ -15,27 +13,9 @@ const std::string HTTP_413 = "413 Payload Too Large";
 const std::string HTTP_415 = "415 Unsupported Media Type";
 const std::string HTTP_500 = "500 Internal Server Error";
 
-// Enum for CGI pipes (stdout, stderr)
-enum CgiPipeType {
-    CGI_STDOUT,
-    CGI_STDERR
-};
-
-// Structure to store CGI pipe information
-struct CgiPipeInfo {
-    pid_t pid;         // Process ID of the CGI script
-    CgiPipeType type;  // Type of the pipe (stdout or stderr)
-    int client_fd;     // Client file descriptor to send the response to
-};
-
 class Request
 {
     private:
-        int _epoll_fd;
-
-        struct epoll_event _event;
-        std::unordered_map<int, CgiPipeInfo> _cgi_pipes;
-
         ServerConfig _config;
         std::vector<ServerConfig> _configs; // Added member variable
 
@@ -88,8 +68,6 @@ class Request
         bool monitorCgiExecution(pid_t pid, int stdoutPipe, int stderrPipe);  // Monitor CGI process and handle timeouts/errors
         void processCgiOutput(int stdoutPipe, int stderrPipe);  // Process CGI script output and prepare the HTTP response
     public:
-        Request(const std::vector<ServerConfig> &configs, const std::string &request_data, int port, int epoll_fd);
-
         // Updated constructor to initialize _configs
         Request(const std::vector<ServerConfig> &configs, const std::string &request_data, int port);
         Request(const Request &src) = delete;
@@ -161,7 +139,5 @@ class Request
 
     // Save uploaded file to specified path
     void saveUploadedFile(const std::string &uploadDir, const std::string &filename, const std::string &fileContent);
-
-    void AddPipeToEpoll(int pipe_fd, uint32_t events);
 };
 
