@@ -4,6 +4,10 @@
 #include <sys/wait.h>
 #include <cstring>
 #include <signal.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <iostream>
+#include <sys/epoll.h>
 
 // check if the request is for a CGI script based on the file extension
 bool Request::isCgiRequest(std::string path) {
@@ -259,31 +263,36 @@ bool Request::executeCgiScript(LocationConfig* location, const std::string& scri
     return false;
 }
 
-// handle the parent process logic for managing the CGI process and collecting output and errors
 void Request::handleCgiParentProcess(int stdinPipe[2], int stdoutPipe[2], int stderrPipe[2], const std::string& body, pid_t pid) {
-    // close the unused read end of the stdin pipe (since the parent only writes to stdin)
+    // Close the unused ends of the pipes
     close(stdinPipe[0]);
-
-    // close the unused write ends of the stdout and stderr pipes (since the parent only reads from them)
     close(stdoutPipe[1]);
     close(stderrPipe[1]);
 
-    // write the request body (for POST requests) to the CGI script via the stdin pipe
+    // Write the request body to the CGI script's stdin
     writeBodyToPipe(body, stdinPipe[1]);
+    close(stdinPipe[1]);  // Close stdin after writing the body
 
-    // close the write end of stdin after sending the body to signal EOF to the CGI script
-    close(stdinPipe[1]);
+    // Add stdout and stderr pipes to the epoll instance for monitoring
+    AddPipeToEpoll(stdoutPipe[0], EPOLLIN);
+    AddPipeToEpoll(stderrPipe[0], EPOLLIN);
 
-    // monitor the CGI process, passing the read ends of the stdout and stderr pipes to collect output and errors
-    if (!monitorCgiExecution(pid, stdoutPipe[0], stderrPipe[0])) {
-        // if monitoring fails (e.g., process timeout), exit early
-        return;
-    }
-
-    // close the remaining read ends of the stdout and stderr pipes after capturing the output and errors
-    close(stdoutPipe[0]);
-    close(stderrPipe[0]);
+    // Store CGI execution details (pid, pipes) for later use
+    _cgi_pipes[stdoutPipe[0]] = {pid, CGI_STDOUT};
+    _cgi_pipes[stderrPipe[0]] = {pid, CGI_STDERR};
 }
+
+// Helper function to add a pipe to the epoll instance
+void Request::AddPipeToEpoll(int pipe_fd, uint32_t events) {
+    _event.events = events | EPOLLET;  // Use edge-triggered mode
+    _event.data.fd = pipe_fd;
+    if (epoll_ctl(_epoll_fd, EPOLL_CTL_ADD, pipe_fd, &_event) == -1) {
+        std::cerr << "Failed to add pipe to epoll: " << strerror(errno) << std::endl;
+        close(pipe_fd);
+    }
+}
+
+
 
 // write the request body to the CGI script via the stdin pipe
 void Request::writeBodyToPipe(const std::string& body, int writeFd) {
