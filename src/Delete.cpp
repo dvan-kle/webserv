@@ -45,11 +45,7 @@ void Request::HandleDeleteRequest() {
     if (stat(fileToDelete.c_str(), &buffer) != 0) {
         // Serve a 404 Not Found page if the file does not exist
         std::cerr << "Error: File not found: " << fileToDelete << std::endl;
-        std::string errorMessage = "<html><body><h1>404 Not Found</h1><p>The requested file was not found.</p></body></html>";
-        // set the response header for 404 Not Found
-        responseHeader(errorMessage, HTTP_404);
-        // append the error message to the response
-        _response += errorMessage;
+        ServeErrorPage(404);
         return;
     }
 
@@ -64,10 +60,6 @@ void Request::HandleDeleteRequest() {
     } else {
         // if file deletion fails, serve a 500 Internal Server Error page
         std::cerr << "Error: Unable to delete file: " << fileToDelete << std::endl;
-        std::string errorMessage = "<html><body><h1>500 Internal Server Error</h1><p>Unable to delete the requested file.</p></body></html>";
-        // set the response header for 500 Internal Server Error
-        responseHeader(errorMessage, HTTP_500);
-        // append the error message to the response
-        _response += errorMessage;
+    	ServeErrorPage(500);
     }
 }
