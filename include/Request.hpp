@@ -50,7 +50,7 @@ class Request
 
         // Response Handling
         void HandleGetRequest(); // Handle GET requests
-        void HandlePostRequest(const std::string &requestBody); // Handle POST requests
+        void HandlePostRequest(const std::string &requestBody);
         void HandleDeleteRequest(); // Handle DELETE requests
 
         // File and Directory Handling
@@ -101,7 +101,6 @@ class Request
         void sendRedirectResponse(const std::string &redirection_url, int return_code);
 
         // Utilities
-        ssize_t convertMaxBodySize(const std::string &input);
         std::string getCurrentTimeHttpFormat();
         bool hasFileExtension(const std::string& url);
         void createDir(const std::string &path);
@@ -115,5 +114,30 @@ class Request
         std::string getResponse() const { return _response; }
 
         std::string getAbsolutePath(const std::string &path);
+
+    // Convert max body size from configuration string (e.g., "1M", "1K") to bytes.
+    ssize_t convertMaxBodySize(const std::string &input);
+
+    // Handle POST request
+    // Extract Content-Length from headers
+    size_t extractContentLength();
+
+    // Extract Content-Type from headers and normalize it
+    std::string extractContentType();
+
+    // Process request body based on content type
+    void processRequestBody(const std::string &contentType, const std::string &requestBody);
+
+    // Extract multipart boundary from headers
+    std::string extractBoundary();
+
+    // Process multipart form-data and save files
+    void processMultipartData(const std::string &requestBody, const std::string &boundary, const std::string &uploadDir);
+
+    // Extract filename from multipart headers
+    std::string extractFilename(const std::string &partHeaders);
+
+    // Save uploaded file to specified path
+    void saveUploadedFile(const std::string &uploadDir, const std::string &filename, const std::string &fileContent);
 };
 
