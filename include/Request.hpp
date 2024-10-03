@@ -16,22 +16,22 @@ const std::string HTTP_500 = "500 Internal Server Error";
 class Request
 {
     private:
-        ServerConfig _config;
-        std::vector<ServerConfig> _configs; // Added member variable
+        ServerConfig				_config;
+        std::vector<ServerConfig>	_configs; // Added member variable
 
-        std::string _method;
-        std::string _url;
-        std::string _http_version;
+        std::string					_method;
+        std::string					_url;
+        std::string					_http_version;
 
-        std::string _request;
-        std::string _response;
+        std::string					_request;
+        std::string					_response;
 
-        std::string _body;
-        ssize_t     _max_body_size;
+        std::string					_body;
+        ssize_t    					_max_body_size;
 
-        std::string _headers;
+        std::string					_headers;
 
-        int _port;
+        int							_port;
 
         bool _needs_redirect = false;
         bool _response_ready = false;
@@ -67,6 +67,7 @@ class Request
         void writeBodyToPipe(const std::string& body, int writeFd);  // Write the request body to the CGI script via stdin pipe
         bool monitorCgiExecution(pid_t pid, int stdoutPipe, int stderrPipe);  // Monitor CGI process and handle timeouts/errors
         void processCgiOutput(int stdoutPipe, int stderrPipe);  // Process CGI script output and prepare the HTTP response
+
     public:
         // Updated constructor to initialize _configs
         Request(const std::vector<ServerConfig> &configs, const std::string &request_data, int port);
@@ -116,4 +117,3 @@ class Request
 
         std::string getAbsolutePath(const std::string &path);
 };
-
