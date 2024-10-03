@@ -246,6 +246,10 @@ ServerConfig JsonParser::parseServerConfig() {
     // expect the opening brace for the server config
     expect('{');
 
+    bool has_listen_host = false;
+    bool has_listen_port = false;
+    bool has_client_max_body_size = false;
+
     while (true) {
         // skip leading whitespace
         skipWhitespace();
@@ -259,14 +263,17 @@ ServerConfig JsonParser::parseServerConfig() {
         // parse based on the key
         if (key == "listen_host") {
             server.listen_host = getNextString();
+            has_listen_host = true;  // Mark listen_host as provided
         } else if (key == "listen_port") {
             server.listen_port = getNextInt();
+            has_listen_port = true;  // Mark listen_port as provided
         } else if (key == "server_name") {
             server.server_name = getNextString();
         } else if (key == "error_pages") {
             server.error_pages = parseErrorPages();
         } else if (key == "client_max_body_size") {
             server.client_max_body_size = getNextString();
+            has_client_max_body_size = true;  // Mark client_max_body_size as provided
         } else if (key == "locations") {
             // start of locations array
             expect('[');
@@ -274,10 +281,10 @@ ServerConfig JsonParser::parseServerConfig() {
             while (input_[pos_] != ']') {
                 // parse the next location configuration from the JSON and add it to the server's locations vector
                 server.locations.push_back(parseLocationConfig());
-                
+
                 // skip leading whitespace
                 skipWhitespace();
-                
+
                 if (input_[pos_] == ',') {
                     // continue parsing the next key
                     pos_++;
@@ -300,6 +307,17 @@ ServerConfig JsonParser::parseServerConfig() {
             pos_++;
             break;
         }
+    }
+
+    // Validate required fields
+    if (!has_listen_host) {
+        throw std::runtime_error("Error: 'listen_host' is required but missing in server configuration.");
+    }
+    if (!has_listen_port) {
+        throw std::runtime_error("Error: 'listen_port' is required but missing in server configuration.");
+    }
+    if (!has_client_max_body_size) {
+        throw std::runtime_error("Error: 'client_max_body_size' is required but missing in server configuration.");
     }
 
     return server;

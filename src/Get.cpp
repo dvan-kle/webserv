@@ -66,7 +66,7 @@ void Request::HandleDirectoryRequest(const std::string &filePath, LocationConfig
 			// if the index file doesn't exist, check if autoindex is enabled
             if (location->autoindex) {
 				// serve an generated directory listing
-                ServeAutoIndex(location->root, _url, _config.listen_host, _config.listen_port);
+                ServeAutoIndex(location->root, _url, _config.listen_host, _config.listen_port, location);
             } else {
 				// serve 404 if autoindex is disabled and no index file is found
                 ServeErrorPage(404);
@@ -77,7 +77,7 @@ void Request::HandleDirectoryRequest(const std::string &filePath, LocationConfig
         }
     } else if (location->autoindex) {
 		// if autoindex is enabled but no index file is specified, serve the directory listing
-        ServeAutoIndex(location->root, _url, _config.listen_host, _config.listen_port);
+        ServeAutoIndex(location->root, _url, _config.listen_host, _config.listen_port, location);
     } else {
 		// serve 404 if neither index nor autoindex is available
         ServeErrorPage(404);

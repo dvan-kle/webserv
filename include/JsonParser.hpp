@@ -26,7 +26,7 @@ struct ServerConfig {
     int listen_port = 8080;
     std::string server_name;
     std::unordered_map<int, std::string> error_pages;
-    std::string client_max_body_size;
+    std::string client_max_body_size = "1M";
     std::vector<LocationConfig> locations;
 };
 
