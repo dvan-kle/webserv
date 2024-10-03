@@ -1,7 +1,7 @@
 {
 	"servers": [
 		{
-			"listen_host": "10.11.6.2",
+			"listen_host": "0.0.0.0",
 			"listen_port": 8001,
 			"server_name": "myserver1",
 			"error_pages": {
@@ -17,7 +17,7 @@
 				"401": "error_pages/error_401.html",
 				"504": "error_pages/error_504.html"
 			},
-			"client_max_body_size": "2GB",
+			"client_max_body_size": "1M",
 			"locations": [
 				{
 					"path": "/",
@@ -55,7 +55,7 @@
 			]
 		},
 		{
-			"listen_host": "10.11.6.2",
+			"listen_host": "0.0.0.0",
 			"listen_port": 8002,
 			"server_name": "myserver2",
 			"client_max_body_size": "1M",
@@ -70,8 +70,8 @@
 			]
 		},
 		{
-			"listen_host": "127.0.0.1",
-			"listen_port": 8001,
+			"listen_host": "0.0.0.0",
+			"listen_port": 8003,
 			"server_name": "myserver3",
 			"client_max_body_size": "1M",
 			"locations": [
